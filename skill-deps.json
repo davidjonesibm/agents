@@ -1,0 +1,62 @@
+{
+  "rug-orchestrator": {
+    "skills": [
+      {
+        "name": "rug-routing",
+        "type": "scaffold",
+        "location": "skills/rug-routing",
+        "description": "Defines the specialist agent roster and routing rules for the RUG orchestrator — must be customized per-repo"
+      }
+    ]
+  },
+  "fastify-expert": {
+    "skills": [
+      {
+        "name": "fastify-pro",
+        "type": "bundled",
+        "location": "skills/fastify-pro",
+        "description": "Fastify best practices, patterns, hooks, security, testing, and TypeScript references"
+      }
+    ]
+  },
+  "vuejs-expert": {
+    "skills": [
+      {
+        "name": "vue-pro",
+        "type": "bundled",
+        "location": "skills/vue-pro",
+        "description": "Vue 3 best practices, Composition API patterns, state management, performance, and TypeScript references"
+      }
+    ]
+  },
+  "supabase-expert": {
+    "skills": [
+      {
+        "name": "supabase-pro",
+        "type": "bundled",
+        "location": "skills/supabase-pro",
+        "description": "Supabase auth, migrations, API patterns, security, storage, and TypeScript references"
+      }
+    ]
+  },
+  "swiftui-expert": {
+    "skills": [
+      {
+        "name": "swiftui-pro",
+        "type": "bundled",
+        "location": "skills/swiftui-pro",
+        "description": "SwiftUI views, navigation, data flow, accessibility, performance, and Swift references"
+      }
+    ]
+  },
+  "pwa-expert": {
+    "skills": [
+      {
+        "name": "pwa-pro",
+        "type": "bundled",
+        "location": "skills/pwa-pro",
+        "description": "PWA service workers, caching strategies, push notifications, offline support, and Vite PWA plugin references"
+      }
+    ]
+  }
+}

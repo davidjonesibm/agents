@@ -1,0 +1,9 @@
+{
+  "source": "david/agent-repo",
+  "ref": "main",
+  "skills": [
+    "fastify-pro",
+    "vue-pro",
+    "monitor-ci"
+  ]
+}

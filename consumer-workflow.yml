@@ -1,0 +1,91 @@
+# TEMPLATE — copy this file into each consuming repo at:
+#   .github/workflows/sync-copilot-deps.yml
+#
+# Prerequisites:
+#   1. A `.copilot-deps.json` file in the repo root (see agent-repo README).
+#   2. If agent-repo is private, add a PAT with `repo` scope as a secret
+#      named COPILOT_SYNC_PAT so the workflow can clone it.
+
+name: Sync copilot deps
+
+on:
+  repository_dispatch:
+    types: [copilot-deps-update]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consuming repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Read source repo URL and optional ref from .copilot-deps.json
+      - name: Read .copilot-deps.json
+        id: deps
+        run: |
+          if [ ! -f .copilot-deps.json ]; then
+            echo "No .copilot-deps.json found – nothing to sync."
+            exit 1
+          fi
+          SOURCE=$(jq -r '.source' .copilot-deps.json)
+          REF=$(jq -r '.ref // "main"' .copilot-deps.json)
+          echo "source=$SOURCE" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Clone agent-repo (shallow)
+        env:
+          # Falls back to GITHUB_TOKEN for public repos; use COPILOT_SYNC_PAT for private repos.
+          TOKEN: ${{ secrets.COPILOT_SYNC_PAT || secrets.GITHUB_TOKEN }}
+          SOURCE: ${{ steps.deps.outputs.source }}
+          REF: ${{ steps.deps.outputs.ref }}
+        run: |
+
+          # Convert GitHub shorthand or HTTPS URL to an authenticated clone URL
+          if [[ "$SOURCE" == https://* ]]; then
+            CLONE_URL="${SOURCE%.git}"
+            CLONE_URL="https://x-access-token:${TOKEN}@${CLONE_URL#https://}.git"
+          else
+            CLONE_URL="https://x-access-token:${TOKEN}@github.com/${SOURCE}.git"
+          fi
+
+          git clone --depth 1 --branch "$REF" "$CLONE_URL" /tmp/agent-repo
+
+      - name: Run sync script
+        run: node /tmp/agent-repo/sync.mjs
+
+      - name: Build PR body
+        id: pr-body
+        env:
+          SOURCE_SHA: ${{ github.event.client_payload.source_sha }}
+        run: |
+          SHA="${SOURCE_SHA:-}"
+          BODY="Automated sync of copilot agents & skills from agent-repo."
+          if [ -n "$SHA" ]; then
+            BODY="${BODY}\n\nSource commit: \`${SHA}\`"
+          fi
+          # Use delimiter to handle multiline
+          {
+            echo "body<<EOF"
+            echo -e "$BODY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request (if changes exist)
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: sync copilot agents & skills from agent-repo'
+          title: 'chore: sync copilot agents & skills'
+          body: ${{ steps.pr-body.outputs.body }}
+          branch: sync/copilot-deps
+          labels: copilot-deps

@@ -1,0 +1,51 @@
+# Notify consuming repos when copilot agent files or skills change.
+#
+# REQUIRED SECRET: COPILOT_SYNC_PAT
+#   A Personal Access Token with `repo` scope on all consuming repos.
+#   GITHUB_TOKEN cannot dispatch to other repositories.
+#   Create a fine-grained or classic PAT, then add it as a repository secret
+#   named COPILOT_SYNC_PAT in this repo's Settings → Secrets → Actions.
+
+name: Notify consumers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/agents/**'
+      - '.github/skills/**'
+      - 'skills/**'
+      - 'sync.mjs'
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read consumers.json and dispatch
+        env:
+          PAT: ${{ secrets.COPILOT_SYNC_PAT }}
+        run: |
+          if [ ! -f consumers.json ]; then
+            echo "consumers.json not found – nothing to dispatch."
+            exit 0
+          fi
+
+          REPOS=$(jq -r '.repos[]' consumers.json)
+
+          if [ -z "$REPOS" ]; then
+            echo "No consuming repos listed in consumers.json – skipping."
+            exit 0
+          fi
+
+          for REPO in $REPOS; do
+            echo "Dispatching to $REPO …"
+            curl -s -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $PAT" \
+              "https://api.github.com/repos/${REPO}/dispatches" \
+              -d "{\"event_type\":\"copilot-deps-update\",\"client_payload\":{\"source_repo\":\"${{ github.repository }}\",\"source_sha\":\"${{ github.sha }}\"}}"
+            echo "  → dispatched"
+          done
