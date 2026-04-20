@@ -105,14 +105,6 @@ function syncAgents(sourceRoot, targetRoot) {
     // else: unchanged — skip
   }
 
-  // Remove agents in target that aren't in source
-  for (const file of tgtAgents) {
-    if (!srcAgents.has(file)) {
-      rmSync(join(tgtDir, file));
-      removed.push(file);
-    }
-  }
-
   return { added, updated, removed };
 }
 
