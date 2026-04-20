@@ -66,7 +66,7 @@ Copy `consumer-workflow.yml` from this repo to `.github/workflows/sync-copilot-d
 Either trigger the workflow manually (Actions → Sync copilot deps → Run workflow) or run locally:
 
 ```sh
-git clone --depth 1 https://github.com/your-org/agent-repo.git /tmp/agent-repo
+git clone --depth 1 https://github.com/your-org/agents.git /tmp/agent-repo
 node /tmp/agent-repo/sync.mjs
 ```
 
@@ -111,7 +111,7 @@ Run from the root of your consuming repo:
 
 ```sh
 # Clone agent-repo to a temp directory
-git clone --depth 1 https://github.com/your-org/agent-repo.git /tmp/agent-repo
+git clone --depth 1 https://github.com/your-org/agents.git /tmp/agent-repo
 
 # Run sync (reads .copilot-deps.json from CWD)
 node /tmp/agent-repo/sync.mjs
