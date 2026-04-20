@@ -1,127 +1,164 @@
 ---
 name: rug-routing
 description: >-
-  Defines the specialist agent roster and routing rules for the RUG orchestrator in this repository.
-  Customize this file per-repo to register domain-specific agents and their routing triggers.
-  RUG reads this skill at the start of every session to determine which agents to use.
+  Authoritative routing table for the RUG orchestrator. Contains the full agent roster,
+  file-pattern routing rules, task-phase routing, bug triage table, handoff matrix,
+  and critical routing overrides. Read by RUG at the start of every session to decide
+  which specialist agent handles each task.
 ---
 
-<!-- This file was scaffolded by copilot-sync. Customize it for your repository. -->
+# RUG Routing — Consolidated Agent Roster & Routing Rules
 
-# RUG Routing — Repo-Specific Agent Roster
+This skill is read by the **RUG orchestrator** at the start of every session. It is the authoritative source for:
 
-This skill is read by the RUG orchestrator at the start of every task. It defines which specialist agents are available in this repository and how to route work to them.
+1. Which specialist agents exist in this repository
+2. How to route tasks, file patterns, and bug reports to the correct agent
+3. Which handoffs are available between agents
 
-**Override rule**: Any agent listed here takes precedence over the generic "Software Engineer Agent" fallback defined in the core RUG protocol.
-
----
-
-## Specialist Agent Roster
-
-<!-- TODO: Add rows for your repo-specific specialist agents (e.g., Fastify Expert, Vue Expert).
-     Keep the 6 default utility agents below — they come from agent-repo and work in any repo.
-     See "How to Customize This File" at the bottom for step-by-step instructions. -->
-
-| Agent                       | Domain              | When to use                                                                                                                                                                                                                                                        |
-| --------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Context7-Expert**         | Research            | Any question involving a specific library, framework, or package. Library best practices, version upgrades, correct API syntax, migration guidance. Use BEFORE implementation whenever tech choices or library usage is in scope.                                  |
-| **Code Reviewer**           | Review              | Post-implementation review of any code. Security audit, correctness checks, style consistency, performance review. Launch AFTER implementation to validate quality.                                                                                                |
-| **Test Writer**             | Testing             | Test generation for any language or framework. Launch AFTER implementation when tests are needed.                                                                                                                                                                  |
-| **Custom Agent Foundry**    | Agent customization | ALL work on VS Code agent customization files: `.agent.md`, `.instructions.md`, `.prompt.md`, `SKILL.md`, `copilot-instructions.md`. Initial creation, edits after validation FAIL, updates, debugging. NEVER route agent file editing to Software Engineer Agent. |
-| **Skill Foundry**           | Skill creation      | Building new agent skills from documentation or best-practice research. SKILL.md + reference files for a library, framework, or platform.                                                                                                                          |
-| **Software Engineer Agent** | General (fallback)  | FALLBACK ONLY. General implementation, scripts, configuration. Use when no other specialist matches.                                                                                                                                                               |
-
-<!-- TODO: Add your repo-specific agents here. Example:
-| **Fastify Expert** | Backend | ALL Fastify backend work: route handlers, plugins, hooks, schemas, serialization, authentication, error handling. ANY task touching the apps/backend/ Fastify server code. |
-| **Vue Expert** | Frontend | ALL Vue 3 frontend work: components, composables, Pinia stores, routing. ANY task touching the apps/frontend/ code. |
--->
+**Override rule**: Any agent listed here takes precedence over the generic "Software Engineer Agent" fallback.
 
 ---
 
-## Routing Rules
+## 1. Agent Roster
 
-<!-- TODO: Add routing rules for your repo-specific agents in step 3 below.
-     The numbered phases are fixed — insert domain-specific rules within phase 3. -->
-
-```
-1. Research phase → Context7-Expert for library/framework concerns
-
-2. Bug diagnosis phase → Follow the Bug Diagnosis Protocol in the core RUG instructions.
-   Triage to the most specific specialist below; escalate to Software Engineer Agent if unresolved.
-
-3. Implementation phase → Match to the most specific specialist:
-   - Agent customization files (.agent.md, .instructions.md, .prompt.md, SKILL.md, copilot-instructions.md) → Custom Agent Foundry
-   - New agent skills (SKILL.md + reference files) → Skill Foundry
-   # TODO: Add repo-specific routing rules here. Examples:
-   # - Fastify routes/plugins/hooks (apps/backend/) → Fastify Expert
-   # - Vue components/composables/stores (apps/frontend/) → Vue Expert
-   - General implementation, scripts, config → Software Engineer Agent (fallback)
-
-4. Review phase → Code Reviewer after any implementation
-
-5. Testing phase → Test Writer for test generation
-
-6. Validation phase → Same specialist as implementation, or Context7-Expert for library verification
-```
+| #   | Agent                           | Domain                       | When to Route                                                                                                                                                                                              | Skills Loaded                                                                                                         |
+| --- | ------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Backend Engineer**            | Server-side                  | API routes, database queries, server plugins, auth middleware, WebSocket handlers. Any server-side code.                                                                                                   | fastify-pro, supabase-pro, pocketbase-pro, dotnet-server, dotnet-migration, golang-api (loaded dynamically per stack) |
+| 2   | **Frontend Engineer**           | Frontend web                 | UI components, state management, composables, service workers, web app manifests. Any browser-side code.                                                                                                   | vue-pro, pwa-pro (loaded dynamically)                                                                                 |
+| 3   | **Mobile Engineer**             | iOS / Android / Flutter      | Native mobile UI, platform APIs, app lifecycle, mobile UX. Any mobile codebase.                                                                                                                            | swiftui-pro, android-kotlin-pro, flutter-pro, mobile-uiux-pro (loaded dynamically)                                    |
+| 4   | **Architect**                   | System design                | API design, system diagrams, architecture decisions, service decomposition, contract design.                                                                                                               | api-design-pro                                                                                                        |
+| 5   | **Infrastructure Engineer**     | DevOps & tooling             | Docker, Caddy, CI/CD pipelines, monorepo tooling, deployment config, build systems.                                                                                                                        | docker-pro, caddy-pro, monitor-ci, link-workspace-packages                                                            |
+| 6   | **Full-Stack Engineer**         | Cross-layer implementation   | End-to-end features that span frontend + backend + infra in a single coherent task.                                                                                                                        | All relevant framework skills (loaded dynamically)                                                                    |
+| 7   | **Context7-Expert**             | Research                     | Library/framework documentation lookup via Context7 MCP. Researching APIs, checking latest syntax, finding best practices. Read-only.                                                                      | — (MCP-based)                                                                                                         |
+| 8   | **Code Reviewer**               | Review                       | Post-implementation code review. Correctness, security, performance, style. Launch AFTER implementation.                                                                                                   | Framework skills loaded dynamically per review target                                                                 |
+| 9   | **Test Writer**                 | Testing                      | Test generation for any language/framework. Writes comprehensive test suites. Launch AFTER implementation.                                                                                                 | Framework skills loaded dynamically per test target                                                                   |
+| 10  | **Software Engineer Agent**     | General (fallback)           | FALLBACK ONLY. Use when no specialist matches, or for cross-cutting concerns that don't fit any specialist.                                                                                                | —                                                                                                                     |
+| 11  | **Foundry**                     | Agent & skill infrastructure | ALL work on agent files (`.agent.md`, `.instructions.md`, `.prompt.md`, `copilot-instructions.md`, `AGENTS.md`) AND skill packages (`SKILL.md` + `references/`). Creation, editing, rebuilding, debugging. | agent-builder, skill-builder (loaded dynamically)                                                                     |
+| 12  | **App Store Deployment Expert** | App distribution             | Code signing, store submission, provisioning profiles, app metadata, release workflows.                                                                                                                    | —                                                                                                                     |
+| 13  | **RUG**                         | Orchestration                | The orchestrator itself. Pure delegation — never does implementation work.                                                                                                                                 | rug-routing (this file)                                                                                               |
+| 14  | **Handoff**                     | Session continuity           | Generates context-carrying handoff documents for session resumption.                                                                                                                                       | —                                                                                                                     |
+| 15  | **CI Monitor Subagent**         | CI monitoring                | Thin MCP helper for monitoring CI pipelines. Single tool-call per invocation.                                                                                                                              | monitor-ci                                                                                                            |
 
 ---
 
-## Bug Triage Table
+## 2. File Pattern → Agent Routing Rules
 
-<!-- TODO: Add rows for your repo-specific agents that handle diagnosable domains. -->
+When a task references specific files, use this table to select the specialist agent.
 
-| Symptoms                             | Primary Diagnosis Agent |
-| ------------------------------------ | ----------------------- |
-| Agent customization file misbehaving | Custom Agent Foundry    |
-| Skill output wrong or incomplete     | Skill Foundry           |
-| Cross-cutting or unclear origin      | Software Engineer Agent |
-| Build, config, tooling issue         | Software Engineer Agent |
-| Cannot be classified above           | Software Engineer Agent |
+| File Pattern / Path                                                                                  | Route To                               |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `*.agent.md`, `*.instructions.md`, `*.prompt.md`, `SKILL.md`, `copilot-instructions.md`, `AGENTS.md` | **Foundry**                            |
+| `apps/backend/**`, `routes/**`, `plugins/**`, `**/server.*`, `**/api/**`                             | **Backend Engineer**                   |
+| `apps/frontend/**`, `components/**`, `views/**`, `stores/**`, `composables/**`, `**/src/App.vue`     | **Frontend Engineer**                  |
+| `**/*.swift`, `**/*.swiftui`, `*.xcodeproj/**`, `*.xcworkspace/**`, `**/Info.plist`                  | **Mobile Engineer**                    |
+| `**/*.kt`, `**/*.kts`, `**/AndroidManifest.xml`, `**/build.gradle*`, `**/res/**` (Android)           | **Mobile Engineer**                    |
+| `**/lib/**` (Flutter), `**/pubspec.yaml`, `**/*.dart`                                                | **Mobile Engineer**                    |
+| `Dockerfile*`, `docker-compose*`, `Caddyfile*`, `.github/workflows/**`, `*.yml` (CI)                 | **Infrastructure Engineer**            |
+| `pnpm-workspace.yaml`, `turbo.json`, `nx.json`, monorepo config                                      | **Infrastructure Engineer**            |
+| `docs/architecture*`, `docs/ARCHITECTURE.md`, API design docs                                        | **Architect**                          |
+| `libs/shared/**` (shared types used by both frontend + backend)                                      | **Full-Stack Engineer**                |
+| Cross-layer changes spanning frontend + backend in one feature                                       | **Full-Stack Engineer**                |
+| `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**`                                                      | **Test Writer**                        |
+| Everything else (no pattern match)                                                                   | **Software Engineer Agent** (fallback) |
 
-<!-- TODO: Add repo-specific triage rows. Example:
-| Backend route/plugin/API error | Fastify Expert |
-| Frontend component/store bug | Vue Expert |
--->
-
----
-
-## Handoff Matrix
-
-Domain-specific agents can hand off to: Context7, Code Reviewer, Test Writer, and Software Engineer Agent.
-
-<!-- TODO: When you add repo-specific agents, add a row AND column for each one.
-     Mark ✅ where handoff is allowed, leave blank or — where it is not. -->
-
-| From → To             | Context7 | Software Engineer | Code Reviewer | Test Writer | Agent Foundry | Skill Foundry |
-| --------------------- | -------- | ----------------- | ------------- | ----------- | ------------- | ------------- |
-| **Context7-Expert**   | —        | ✅                | ✅            | ✅          | ✅            | ✅            |
-| **Software Engineer** | ✅       | —                 | ✅            | ✅          | ✅            | —             |
-| **Code Reviewer**     | ✅       | —                 | —             | ✅          | —             | —             |
-| **Test Writer**       | ✅       | —                 | ✅            | —           | —             | —             |
-| **Agent Foundry**     | ✅       | ✅                | —             | —           | —             | —             |
-| **Skill Foundry**     | ✅       | —                 | —             | —           | —             | —             |
+**Precedence**: When multiple patterns match, pick the most specific agent. Foundry overrides ALL other agents for agent/skill files (see Section 6).
 
 ---
 
-## How to Customize This File
+## 3. Task Phase Routing
 
-To add a new specialist agent to this repo:
+| Phase                                                          | Route To                          | Notes                                                                                |
+| -------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------ |
+| **Research** — library docs, API lookup, best practices        | **Context7-Expert**               | Always route here BEFORE implementation when library/framework knowledge is needed   |
+| **Implementation** — writing production code                   | Domain specialist (see below)     | Match to most specific: Backend / Frontend / Mobile / Infra / Architect / Full-Stack |
+| **Review** — post-implementation quality check                 | **Code Reviewer**                 | Launch AFTER implementation to validate correctness, security, performance           |
+| **Testing** — writing or updating tests                        | **Test Writer**                   | Launch AFTER implementation when test coverage is needed                             |
+| **Agent/skill infrastructure** — `.agent.md`, `SKILL.md`, etc. | **Foundry**                       | Overrides all other routing for these file types                                     |
+| **CI monitoring** — pipeline status, build failures            | **CI Monitor Subagent**           | Thin helper, single tool-call per invocation                                         |
+| **App store deployment** — signing, submission, profiles       | **App Store Deployment Expert**   | Code signing, provisioning, store metadata                                           |
+| **Session handoff** — resumption context for next session      | **Handoff**                       | Generates handoff documents when session ends                                        |
+| **Validation** — type-check, lint, build verification          | Same specialist as implementation | Or Context7-Expert for library verification                                          |
 
-1. Add the agent's `.agent.md` file to `.github/agents/`
-2. Add the agent's display name to the `agents:` frontmatter array in `rug-orchestrator.agent.md`
-3. Add a row to the **Specialist Agent Roster** table above with precise routing triggers
-4. Add a row to the **Bug Triage Table** if the agent handles a diagnosable domain
-5. Add a row and column to the **Handoff Matrix** for the new agent
-6. Add a routing rule in phase 3 of the **Routing Rules** block
+### Implementation Phase — Domain Matching
 
-**Example**: Adding a `Fastify Expert` for a Node.js backend repo:
+| Task Domain                                             | Route To                               |
+| ------------------------------------------------------- | -------------------------------------- |
+| API routes, DB queries, server plugins, auth, WebSocket | **Backend Engineer**                   |
+| UI components, state, composables, service workers, PWA | **Frontend Engineer**                  |
+| iOS, Android, or Flutter native code                    | **Mobile Engineer**                    |
+| API design, system architecture, service decomposition  | **Architect**                          |
+| Docker, Caddy, CI/CD, monorepo tooling, deployment      | **Infrastructure Engineer**            |
+| End-to-end feature spanning frontend + backend + infra  | **Full-Stack Engineer**                |
+| Cross-cutting / none of the above                       | **Software Engineer Agent** (fallback) |
 
-```markdown
-| **Fastify Expert** | Backend | ALL Fastify backend work: route handlers, plugins, hooks, schemas, serialization, authentication, error handling. ANY task touching the apps/backend/ Fastify server code. |
-```
+---
 
-Routing rule addition:
+## 4. Bug Triage Table
 
-```
-- Fastify routes/plugins/hooks (apps/backend/) → Fastify Expert
-```
+When diagnosing a bug, triage to the most specific agent based on symptoms.
+
+| Symptoms                                                                  | Primary Diagnosis Agent                |
+| ------------------------------------------------------------------------- | -------------------------------------- |
+| API errors, HTTP 4xx/5xx, database query failures, auth failures          | **Backend Engineer**                   |
+| WebSocket disconnects, message relay issues, real-time sync bugs          | **Backend Engineer**                   |
+| UI rendering bugs, state management issues, routing errors                | **Frontend Engineer**                  |
+| Service worker failures, PWA install/cache issues, push notification bugs | **Frontend Engineer**                  |
+| iOS crashes, SwiftUI layout issues, Xcode build errors                    | **Mobile Engineer**                    |
+| Android crashes, Kotlin compilation errors, Gradle build failures         | **Mobile Engineer**                    |
+| Flutter widget errors, Dart analysis failures, platform channel issues    | **Mobile Engineer**                    |
+| Docker build failures, container networking issues                        | **Infrastructure Engineer**            |
+| CI pipeline failures, deployment errors, Caddy config issues              | **Infrastructure Engineer**            |
+| Monorepo dependency resolution, workspace linking errors                  | **Infrastructure Engineer**            |
+| API contract mismatches, schema validation errors across services         | **Architect**                          |
+| Agent customization file misbehaving, skill output wrong or incomplete    | **Foundry**                            |
+| Code signing errors, provisioning profile issues, store rejection         | **App Store Deployment Expert**        |
+| Cross-layer bugs spanning multiple domains, unclear origin                | **Software Engineer Agent** (fallback) |
+| Cannot be classified by any of the above                                  | **Software Engineer Agent** (fallback) |
+
+---
+
+## 5. Handoff Matrix
+
+Shows which agents can hand off to which. A ✅ means the agent in the row can initiate a handoff to the agent in the column.
+
+| From ↓ \ To →                   | Context7 | Backend | Frontend | Mobile | Architect | Infra | Full-Stack | Code Reviewer | Test Writer | SW Engineer | Foundry | App Store |
+| ------------------------------- | -------- | ------- | -------- | ------ | --------- | ----- | ---------- | ------------- | ----------- | ----------- | ------- | --------- |
+| **Backend Engineer**            | ✅       | —       | ✅       | —      | ✅        | ✅    | —          | ✅            | ✅          | —           | —       | —         |
+| **Frontend Engineer**           | ✅       | ✅      | —        | —      | —         | ✅    | —          | ✅            | ✅          | —           | —       | —         |
+| **Mobile Engineer**             | ✅       | ✅      | —        | —      | ✅        | —     | —          | ✅            | ✅          | —           | —       | —         |
+| **Architect**                   | ✅       | ✅      | ✅       | —      | —         | ✅    | —          | ✅            | —           | —           | —       | —         |
+| **Infrastructure Engineer**     | ✅       | ✅      | ✅       | —      | —         | —     | —          | ✅            | —           | —           | —       | —         |
+| **Full-Stack Engineer**         | ✅       | —       | —        | —      | ✅        | ✅    | —          | ✅            | ✅          | —           | —       | —         |
+| **Context7-Expert**             | —        | ✅      | ✅       | —      | —         | —     | —          | —             | —           | ✅          | —       | —         |
+| **Code Reviewer**               | ✅       | —       | —        | —      | —         | —     | —          | —             | ✅          | —           | —       | —         |
+| **Test Writer**                 | ✅       | —       | —        | —      | —         | —     | —          | ✅            | —           | —           | —       | —         |
+| **Software Engineer Agent**     | ✅       | —       | —        | —      | —         | —     | —          | ✅            | ✅          | —           | —       | —         |
+| **Foundry**                     | ✅       | —       | —        | —      | —         | —     | —          | ✅            | —           | —           | —       | —         |
+| **App Store Deployment Expert** | ✅       | —       | —        | ✅     | —         | —     | —          | —             | —           | —           | —       | —         |
+
+---
+
+## 6. Critical Routing Overrides
+
+These rules are **hard constraints** that override all other routing logic.
+
+### Override 1: Agent/Skill Files → Foundry (MANDATORY)
+
+Any task that involves creating, editing, or debugging these file types **MUST** route to **Foundry**:
+
+- `*.agent.md`
+- `*.instructions.md`
+- `*.prompt.md`
+- `SKILL.md`
+- `copilot-instructions.md`
+- `AGENTS.md`
+
+**NEVER** route agent/skill file work to Software Engineer Agent, Backend Engineer, Frontend Engineer, or any other specialist. Foundry is the only agent with the knowledge to correctly author these files.
+
+### Override 2: Agent File Fix-Back Rule
+
+If any agent (e.g., Code Reviewer, Test Writer) discovers an issue with an agent or skill file during its work, the fix must be routed **back to Foundry** — not handled by the agent that found the issue.
+
+### Override 3: Research Before Implementation
+
+When a task involves unfamiliar library/framework APIs, route to **Context7-Expert** for research BEFORE routing to the implementation specialist. Do not skip the research phase.

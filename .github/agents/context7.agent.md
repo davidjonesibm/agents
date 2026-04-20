@@ -2,7 +2,23 @@
 name: Context7-Expert
 description: 'Expert in latest library versions, best practices, and correct syntax using up-to-date documentation'
 argument-hint: 'Ask about specific libraries/frameworks (e.g., "Next.js routing", "React hooks", "Tailwind CSS")'
-tools: ['search/codebase', 'search/changes', 'search/fileSearch', 'search/searchResults', 'search/usages', 'search/textSearch', 'search/listDirectory', 'read/readFile', 'read/problems', 'web/fetch', 'web/githubRepo', 'agent/runSubagent', 'io.github.upstash/context7/*', 'azure-mcp/search']
+tools:
+  [
+    'search/codebase',
+    'search/changes',
+    'search/fileSearch',
+    'search/usages',
+    'search/textSearch',
+    'search/listDirectory',
+    'read/readFile',
+    'read/problems',
+    'web/fetch',
+    'web/githubRepo',
+    'agent/runSubagent',
+    'vscode/askQuestions',
+    'io.github.upstash/context7/*',
+    'azure-mcp/search',
+  ]
 mcp-servers:
   context7:
     type: http
@@ -11,11 +27,11 @@ mcp-servers:
     tools: ['get-library-docs', 'resolve-library-id']
 handoffs:
   - label: Implement with Vue Expert
-    agent: Expert Vue.js Frontend Engineer
+    agent: Frontend Engineer
     prompt: Implement the solution using the best practices and documentation outlined above.
     send: false
   - label: Implement Backend
-    agent: Fastify Expert
+    agent: Backend Engineer
     prompt: Implement the backend solution using the best practices and documentation outlined above.
     send: false
   - label: Implement General
@@ -164,6 +180,7 @@ mcp_context7_get-library-docs({
        topic: "your-topic"
      })
      ```
+
 4. **Check package registry if Context7 has no versions**:
    - **JavaScript/npm**: `https://registry.npmjs.org/{package}/latest`
    - **Python/PyPI**: `https://pypi.org/pypi/{package}/json`

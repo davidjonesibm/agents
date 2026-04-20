@@ -3,9 +3,7 @@
     "skills": [
       {
         "name": "rug-routing",
-        "type": "scaffold",
-        "location": "skills/rug-routing",
-        "description": "Defines the specialist agent roster and routing rules for the RUG orchestrator — must be customized per-repo"
+        "type": "bundled"
       }
     ]
   },
@@ -56,6 +54,22 @@
         "type": "bundled",
         "location": "skills/pwa-pro",
         "description": "PWA service workers, caching strategies, push notifications, offline support, and Vite PWA plugin references"
+      }
+    ]
+  },
+  "backend-engineer": {
+    "skills": [
+      {
+        "name": "mediatr-pro",
+        "type": "bundled",
+        "location": "skills/mediatr-pro",
+        "description": "MediatR best practices, CQRS patterns, pipeline behaviors, handlers, and testing references"
+      },
+      {
+        "name": "dapper-pro",
+        "type": "bundled",
+        "location": "skills/dapper-pro",
+        "description": "Dapper best practices, query methods, multi-mapping, transactions, type handlers, and testing references"
       }
     ]
   }
