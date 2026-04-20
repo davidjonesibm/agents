@@ -4,6 +4,12 @@
       {
         "name": "rug-routing",
         "type": "bundled"
+      },
+      {
+        "name": "local-routing",
+        "type": "scaffold",
+        "location": ".github/skills/local-routing",
+        "description": "Repo-specific routing overrides for the RUG orchestrator — customized per consumer, never overwritten by sync"
       }
     ]
   },

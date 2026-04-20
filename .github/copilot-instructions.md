@@ -2,130 +2,131 @@
 applyTo: '**'
 ---
 
-# Codebase Instructions
+# Agent-Repo Codebase Instructions
 
-**BEFORE planning or implementing any feature, read [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).** It is the authoritative living reference for this codebase.
+This is the **agent-repo** — a centralized distribution system for VS Code Copilot agent definitions and skill packages. It is NOT a web application. Consuming repos declare which skills they need in `.copilot-deps.json`, and updates propagate automatically via GitHub Actions PRs.
 
-## Stack Quick-Reference
+## File Structure
 
-| Concern            | Location                                 | Notes                                      |
-| ------------------ | ---------------------------------------- | ------------------------------------------ |
-| Frontend app       | `apps/frontend/`                         | Vue 3 + TypeScript + DaisyUI (Tailwind)    |
-| Backend app        | `apps/backend/`                          | Fastify + TypeScript                       |
-| Shared types       | `libs/shared/`                           | Imported as `@chat/shared`                 |
-| Auth               | Supabase                                 | Frontend SDK for auth only                 |
-| Database           | PocketBase                               | Group / channel / message data             |
-| Real-time          | Fastify WebSocket (`@fastify/websocket`) | Ephemeral: typing, presence, message relay |
-| Push notifications | `web-push` (VAPID) via Fastify           | Served from `routes/push.ts`               |
-| PWA                | `vite-plugin-pwa` (`injectManifest`)     | Service worker in `apps/frontend/`         |
-| Monorepo tooling   | pnpm workspaces                          | Run tasks via `pnpm --filter …`            |
+| Path                                     | Purpose                                                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `.github/agents/*.agent.md`              | Agent definitions — ALL are synced to every consumer                         |
+| `.github/skills/<name>/SKILL.md`         | Skill entry points — synced only if a consumer requests them                 |
+| `.github/skills/<name>/references/`      | Reference files supporting a skill (synced with the skill)                   |
+| `skill-templates/<name>/`                | Templates for scaffold skills (auto-created in consumers, never overwritten) |
+| `sync.mjs`                               | Node.js script that copies agents and skills into a consuming repo           |
+| `consumers.json`                         | List of consuming repos that receive dispatch events on push to `main`       |
+| `skill-deps.json`                        | Declares which skills each agent depends on (bundled or scaffold)            |
+| `consumer-workflow.yml`                  | GitHub Actions workflow template consumers copy to their repo                |
+| `.github/workflows/notify-consumers.yml` | Dispatches `copilot-deps-update` events to consumers on push                 |
+| `.github/copilot-instructions.md`        | This file — **never synced** (each repo has its own)                         |
 
-## Shared Types (`@chat/shared`)
+## Agent File Conventions
 
-- Always import types from `@chat/shared` — never redefine locally what already exists there.
-- All DB record types **must** extend `BaseRecord` (provides `id`, `created_at`, `updated_at`).
-- Follow the `*Record → Pick<>` pattern: `*Record` is the full DB row; API-facing shapes are `Pick<*Record, ...>` subsets.
-- Use `*Request` / `*Response` for every API endpoint payload pair.
-- WebSocket messages use `ClientMessage` / `ServerMessage` discriminated unions (keyed on `type`).
-- Use `MessageWithSender` for read-heavy message responses (avoids N+1 joins).
-- Use `PaginatedResponse<T>` for any paginated endpoint.
+Agent files live in `.github/agents/` with kebab-case filenames (e.g., `code-reviewer.agent.md`).
 
-## Frontend Conventions
+**Required YAML frontmatter:**
 
-- **Composition API only** — never use Options API.
-- State management: **Pinia** stores in `stores/` (`*Store` naming, e.g. `chatStore`).
-- Reusable logic: composables in `composables/` (`use*` naming, e.g. `useChat`).
-- Components: `components/auth/` and `components/chat/`; route-level components in `views/` (`*View.vue`).
-- **Supabase SDK is for auth only** — never use it for direct DB queries.
-- All application data flows through the **Fastify REST API**.
+```yaml
+---
+name: Human-Readable Name
+description: One-line description shown in VS Code chat input
+tools: [tool-category-or-id, ...]
+---
+```
 
-## Backend Conventions
+**Optional frontmatter fields:** `argument-hint`, `agents` (sub-agents), `handoffs` (with `label`, `agent`, `prompt`, `send`).
 
-- New routes → `routes/` directory; register with descriptive Fastify plugin names (`*Plugin`).
-- New plugins → `plugins/` directory.
-- Always use `@chat/shared` types for request/response shapes.
-- **Validate all input** with Fastify JSON Schema (attach `schema` to each route).
-- DB access uses the Supabase **service-role client** — never the anon key on the server.
-- WebSocket auth: JWT passed as query param (`/ws?token=JWT`); validated in `plugins/auth.ts`.
+**Conventions:**
 
-## WebSocket Type Safety
+- Use tool category wildcards (e.g., `search`, `edit`, `read`) over individual tool IDs when possible.
+- Every agent must have a clear, specific `description:` — it appears in the VS Code UI.
+- Write imperative, unambiguous instructions in the body — "Always do X", "Never do Y".
+- If an agent requires a skill, add the dependency to `skill-deps.json`.
 
-- Every new WS message type **must** be added to the `ClientMessage` or `ServerMessage` discriminated union in `libs/shared/src/types/events.ts`.
-- Never send untyped / ad-hoc JSON over the WebSocket — always use the shared union types.
+## Skill File Conventions
 
-## Naming Conventions
+Each skill is a directory under `.github/skills/<skill-name>/` containing at minimum a `SKILL.md`.
 
-| Thing                     | Convention               | Example                |
-| ------------------------- | ------------------------ | ---------------------- |
-| DB record type            | `*Record`                | `ChannelRecord`        |
-| API request/response      | `*Request` / `*Response` | `CreateChannelRequest` |
-| Composable                | `use*`                   | `useChannels`          |
-| Pinia store               | `*Store`                 | `channelStore`         |
-| Route-level Vue component | `*View.vue`              | `ChatView.vue`         |
-| Fastify plugin            | `*Plugin`                | `authPlugin`           |
+**Required YAML frontmatter in SKILL.md:**
 
-## Database Types Contract
+```yaml
+---
+name: skill-name
+description: >-
+  Multi-line description. This is used for skill discovery and matching.
+  Include trigger keywords and file patterns.
+---
+```
 
-`apps/backend/database.types.ts` is the hand-maintained Supabase type file. `supabaseAdmin` is typed as `SupabaseClient<Database>` — every table must have `Row`, `Insert`, `Update`, and `Relationships` entries in that file.
+**Skill structure:**
 
-**Every SQL migration that creates a new table MUST be accompanied by a corresponding addition to `database.types.ts`.** Never cast `supabaseAdmin as any` to work around a missing table type — adding the type is the fix.
+- `SKILL.md` — entry point with frontmatter, review process, core instructions, and output format.
+- `references/` — optional directory of focused topic files (e.g., `patterns.md`, `security.md`, `performance.md`). Cross-reference between files rather than duplicating rules.
 
-## Type Narrowing Patterns
+**Conventions:**
 
-- **Nullable store → required prop**: Use `v-if` guards (e.g., `v-if="store.value"`) so Vue narrows the type before the prop binding.
-- **`null` → `undefined` for DOM bindings**: Use `?? undefined` (e.g., `:src="url ?? undefined"`).
-- **Guard before action**: Use early returns (e.g., `if (!id) return;`) before using nullable values.
+- Skill directory name must match the `name:` in frontmatter.
+- The `description:` field drives skill discovery — include relevant trigger keywords.
+- Prefer density over length — actionable rules with code examples beat verbose prose.
+- Every rule should have a before/after example when applicable.
 
-## Validation
+## Sync System
 
-After any code change, **always** run the following checks before considering the task complete:
+**`sync.mjs`** runs in a consuming repo's root directory. It reads `.copilot-deps.json` from the consumer and:
 
-1. **Type-check**: `pnpm --filter @chat/backend exec tsc --noEmit` and `pnpm --filter @chat/frontend exec vue-tsc --noEmit`
-2. **Build**: `pnpm build`
-3. **Lint**: `pnpm lint`
+1. **Agents** — copies ALL `.agent.md` files from `.github/agents/`. Removes agents in the consumer that no longer exist in agent-repo. Not configurable.
+2. **Skills** — copies only skills listed in the consumer's `skills` array. Does a clean replace (deletes and re-copies the skill directory).
+3. **Skill dependencies** — reads `skill-deps.json` and checks:
+   - `bundled` deps: warns if the skill is missing from the consumer's `skills` array.
+   - `scaffold` deps: auto-creates from `skill-templates/` if not already present. Never overwrites existing scaffold skills.
 
-Never rely solely on build success — `tsc --noEmit` catches type errors that the build toolchain (esbuild, Vite) silently ignores.
+**`consumers.json`** lists repos that receive `repository_dispatch` events when agent-repo pushes to `main`.
 
-## Debugging & Logging Protocol
+**`skill-deps.json`** maps agent names (without `.agent.md`) to their skill requirements:
 
-When investigating a bug or unexpected behavior, **always instrument with logging before attempting a speculative fix**. Observe first, then fix — don't guess blindly.
+```json
+{
+  "agent-name": {
+    "skills": [{ "name": "skill-name", "type": "bundled" }]
+  }
+}
+```
 
-### Step 1: Add Diagnostic Logging
+## Adding a New Agent
 
-Before changing any logic, add targeted log statements around the suspected code path to capture:
+1. Create `.github/agents/<name>.agent.md` with proper frontmatter (`name`, `description`, `tools`).
+2. Write the agent body with clear role, instructions, and output format.
+3. If the agent requires specific skills, add an entry to `skill-deps.json`.
+4. Update `README.md` if the agent introduces new concepts or workflows.
 
-- **Inputs**: Function arguments, request payloads, props/state at entry
-- **Control flow**: Which branch was taken, whether a guard returned early
-- **Outputs**: Return values, response payloads, emitted events
-- **Errors**: Full error objects (not just messages), stack traces where available
+## Adding a New Skill
 
-### Step 2: Reproduce and Read Logs
+1. Create `.github/skills/<skill-name>/SKILL.md` with frontmatter (`name`, `description`).
+2. Add `references/` directory with focused topic files if the skill has substantial content.
+3. Add the skill to the **Available Skills** table in `README.md`.
+4. If any agent depends on this skill, add it to `skill-deps.json` under that agent.
 
-Ask the user to reproduce the issue (or reproduce it yourself if possible), then analyze the log output to identify the root cause before writing a fix.
+## Testing Changes
 
-### Step 3: Fix and Retain Useful Logging
+Run `sync.mjs` locally against a consuming repo to verify changes:
 
-After the fix, **keep logging that aids future diagnostics** (error catches, unexpected-state warnings). Remove overly verbose debug-only lines.
+```sh
+# From the consuming repo's root:
+node /path/to/agent-repo/sync.mjs
+```
 
-### Stack-Specific Logging Patterns
+The script prints a summary of added, updated, and removed files. Check that:
 
-| Stack | Pattern | Example |
-|-------|---------|---------|
-| **Backend (Fastify)** | `fastify.log.{level}({ contextObj }, 'message')` | `fastify.log.debug({ userId, channelId }, 'Fetching messages')` |
-| **Frontend (Vue/TS)** | `console.{level}('[Tag]', ...data)` | `console.error('[ChannelStore] Failed to fetch:', err)` |
-| **iOS (Swift)** | `Logger(subsystem: "com.chatapp", category: "…")` | `logger.debug("Loading messages for channel \(channelId)")` |
-
-- **Backend**: Use Fastify's structured logger (`fastify.log.debug`, `.info`, `.warn`, `.error`). Always pass context as the first object arg for structured output. Never use bare `console.log` in backend code.
-- **Frontend**: Prefix every log with a bracketed tag matching the component/store name (e.g., `[ChannelStore]`, `[ChatView]`). Use `console.error` for caught exceptions, `console.warn` for unexpected-but-recoverable states.
-- **iOS**: Use `os.Logger` with subsystem `"com.chatapp"` and a descriptive category. Use `.debug` for diagnostic output, `.error` for failures. Never use bare `print()` in production code paths.
+- New agents appear in the "Added" list.
+- Updated skills show as synced.
+- No unexpected removals occur.
+- Skill dependency warnings are resolved.
 
 ## Do NOT
 
-- Query Supabase directly from the frontend (except auth).
-- Use the Vue Options API anywhere.
-- Define types locally that belong in `@chat/shared`.
-- Add fields to `BaseRecord` — it is a fixed base interface.
-- Send untyped JSON over WebSocket.
-- Bypass Fastify JSON Schema validation for user-supplied input.
-- Cast `supabaseAdmin as any` (or `untypedAdmin`) — update `database.types.ts` instead.
-- Use the TypeScript `!` non-null assertion operator — use `v-if` type narrowing, `?? undefined` coalescing, or control-flow guards instead.
+- Put application-framework conventions in this file — it is not a web app repo.
+- Sync `copilot-instructions.md` — each consuming repo maintains its own.
+- Overwrite scaffold skills in consumers — they are customized per-repo and must be preserved.
+- Invent conventions that don't exist in the codebase — base everything on observed patterns.
+- Modify `sync.mjs` without testing against at least one consumer repo.

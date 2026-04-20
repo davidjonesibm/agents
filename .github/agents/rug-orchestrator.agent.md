@@ -252,18 +252,21 @@ ACCEPTANCE CRITERIA:
 
 ## 6. Routing
 
-**Before starting any task**, read the repo-specific routing skill:
+**Before starting any task**, read the routing configuration:
 
-[skills/rug-routing/SKILL.md](../../skills/rug-routing/SKILL.md)
+1. **Base routing**: [skills/rug-routing/SKILL.md](../../skills/rug-routing/SKILL.md) — canonical agent roster and default routing rules synced from agent-repo
+2. **Local overrides** (if present): [skills/local-routing/SKILL.md](../../skills/local-routing/SKILL.md) — repo-specific file-pattern overrides, custom triage rules, and routing preferences
 
-That file defines:
+**Local routing takes precedence.** When both files exist, any rule in local-routing overrides the corresponding default in rug-routing.
 
-- The **specialist agent roster** for this repository (which agents exist and when to use them)
+The base routing file defines:
+
+- The **specialist agent roster** (which agents exist and when to use them)
 - The **routing rules** for each phase (research, implementation, review, testing, validation)
 - The **bug triage table** for the Bug Diagnosis Protocol
 - The **handoff matrix** between agents
 
-If the routing skill does not exist in this repository, fall back to:
+If neither routing skill exists in this repository, fall back to:
 
 - **Context7-Expert** for library/framework research
 - **Code Reviewer** for post-implementation review

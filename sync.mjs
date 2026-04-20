@@ -330,6 +330,17 @@ function main() {
     const depResult = checkSkillDeps(tmp, cwd, skills);
 
     printSummary(agentResult, skillResult, depResult);
+
+    // Warn if rug-routing was updated and local-routing exists in target
+    const rugSynced = skillResult.synced.some((s) => s.name === 'rug-routing');
+    if (
+      rugSynced &&
+      existsSync(join(cwd, '.github', 'skills', 'local-routing', 'SKILL.md'))
+    ) {
+      console.log(
+        '  ⚠ rug-routing was updated — review .github/skills/local-routing/SKILL.md for new agents or routing changes',
+      );
+    }
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
