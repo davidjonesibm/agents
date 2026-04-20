@@ -66,17 +66,24 @@ function listFiles(dir, filter) {
 // Sync: Agents
 // ---------------------------------------------------------------------------
 
-function syncAgents(sourceRoot, targetRoot) {
+function syncAgents(sourceRoot, targetRoot, requestedAgents) {
   const srcDir = join(sourceRoot, '.github', 'agents');
   const tgtDir = join(targetRoot, '.github', 'agents');
 
   const isAgent = (f) => f.endsWith('.agent.md');
 
-  const srcAgents = new Set(listFiles(srcDir, isAgent));
+  const allSrcAgents = new Set(listFiles(srcDir, isAgent));
   const tgtAgents = new Set(listFiles(tgtDir, isAgent));
 
+  // Filter source agents to only those in the requested set
+  const srcAgents = new Set(
+    [...allSrcAgents].filter((f) =>
+      requestedAgents.has(f.replace(/\.agent\.md$/, '')),
+    ),
+  );
+
   if (srcAgents.size === 0) {
-    console.log('  ⚠  No .agent.md files found in source repo.');
+    console.log('  ⚠  No requested .agent.md files found in source repo.');
     return { added: [], updated: [], removed: [] };
   }
 
@@ -103,6 +110,15 @@ function syncAgents(sourceRoot, targetRoot) {
       updated.push(file);
     }
     // else: unchanged — skip
+  }
+
+  // Remove agents from target that are in the requested set but no longer in source
+  for (const file of tgtAgents) {
+    const name = file.replace(/\.agent\.md$/, '');
+    if (requestedAgents.has(name) && !allSrcAgents.has(file)) {
+      rmSync(join(tgtDir, file));
+      removed.push(file);
+    }
   }
 
   return { added, updated, removed };
@@ -157,7 +173,12 @@ function syncSkills(sourceRoot, targetRoot, skillNames) {
 // Skill Dependency Check
 // ---------------------------------------------------------------------------
 
-function checkSkillDeps(sourceRoot, targetRoot, manifestSkills) {
+function checkSkillDeps(
+  sourceRoot,
+  targetRoot,
+  manifestSkills,
+  requestedAgents,
+) {
   const depsPath = join(sourceRoot, 'skill-deps.json');
   if (!existsSync(depsPath)) return null;
 
@@ -168,11 +189,11 @@ function checkSkillDeps(sourceRoot, targetRoot, manifestSkills) {
     return null;
   }
 
-  // All source agents are synced to the target — derive the list from source
+  // Only check skill deps for agents the consumer actually requested
   const srcAgentDir = join(sourceRoot, '.github', 'agents');
-  const syncedAgents = listFiles(srcAgentDir, (f) =>
-    f.endsWith('.agent.md'),
-  ).map((f) => f.replace(/\.agent\.md$/, ''));
+  const syncedAgents = listFiles(srcAgentDir, (f) => f.endsWith('.agent.md'))
+    .map((f) => f.replace(/\.agent\.md$/, ''))
+    .filter((name) => requestedAgents.has(name));
 
   const manifestSkillSet = new Set(manifestSkills);
 
@@ -313,21 +334,40 @@ function main() {
   console.log('Reading .copilot-deps.json …');
   const manifest = readManifest(cwd);
 
-  const { source, ref = 'main', skills = [] } = manifest;
+  const {
+    source,
+    ref = 'main',
+    skills = [],
+    agents: consumerAgents = [],
+  } = manifest;
   if (!source) die('"source" field is required in .copilot-deps.json');
 
   console.log(`Cloning ${source} (ref: ${ref}) …`);
   const tmp = cloneSource(source, ref);
 
+  // Read core agents from source repo
+  const coreAgentsPath = join(tmp, 'core-agents.json');
+  let coreAgents = [];
+  if (existsSync(coreAgentsPath)) {
+    try {
+      coreAgents = JSON.parse(readFileSync(coreAgentsPath, 'utf-8'));
+    } catch (err) {
+      console.log(`  ⚠  Failed to parse core-agents.json: ${err.message}`);
+    }
+  }
+
+  // Build the combined requested agents set (core + consumer-requested)
+  const requestedAgents = new Set([...coreAgents, ...consumerAgents]);
+
   try {
     console.log('Syncing agents …');
-    const agentResult = syncAgents(tmp, cwd);
+    const agentResult = syncAgents(tmp, cwd, requestedAgents);
 
     console.log('Syncing skills …');
     const skillResult = syncSkills(tmp, cwd, skills);
 
     console.log('Checking skill dependencies …');
-    const depResult = checkSkillDeps(tmp, cwd, skills);
+    const depResult = checkSkillDeps(tmp, cwd, skills, requestedAgents);
 
     printSummary(agentResult, skillResult, depResult);
 

@@ -10,11 +10,12 @@ This is the **agent-repo** — a centralized distribution system for VS Code Cop
 
 | Path                                     | Purpose                                                                      |
 | ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `.github/agents/*.agent.md`              | Agent definitions — ALL are synced to every consumer                         |
+| `.github/agents/*.agent.md`              | Agent definitions — core + consumer-requested agents are synced              |
 | `.github/skills/<name>/SKILL.md`         | Skill entry points — synced only if a consumer requests them                 |
 | `.github/skills/<name>/references/`      | Reference files supporting a skill (synced with the skill)                   |
 | `skill-templates/<name>/`                | Templates for scaffold skills (auto-created in consumers, never overwritten) |
 | `sync.mjs`                               | Node.js script that copies agents and skills into a consuming repo           |
+| `core-agents.json`                       | Array of agent names always synced to every consumer                         |
 | `consumers.json`                         | List of consuming repos that receive dispatch events on push to `main`       |
 | `skill-deps.json`                        | Declares which skills each agent depends on (bundled or scaffold)            |
 | `consumer-workflow.yml`                  | GitHub Actions workflow template consumers copy to their repo                |
@@ -75,7 +76,7 @@ description: >-
 
 **`sync.mjs`** runs in a consuming repo's root directory. It reads `.copilot-deps.json` from the consumer and:
 
-1. **Agents** — copies ALL `.agent.md` files from `.github/agents/`. Removes agents in the consumer that no longer exist in agent-repo. Not configurable.
+1. **Agents** — syncs core agents (listed in `core-agents.json`) plus any additional agents the consumer lists in their `agents` array. Agents in the requested set that no longer exist in the source are removed; agents not in the requested set are left alone.
 2. **Skills** — copies only skills listed in the consumer's `skills` array. Does a clean replace (deletes and re-copies the skill directory).
 3. **Skill dependencies** — reads `skill-deps.json` and checks:
    - `bundled` deps: warns if the skill is missing from the consumer's `skills` array.

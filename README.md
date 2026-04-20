@@ -22,7 +22,7 @@ Centralized distribution system for VS Code Copilot agent definitions and skills
 
 **What gets synced:**
 
-- **Agents** — ALL `.agent.md` files from `.github/agents/` (always, not configurable)
+- **Agents** — Core agents (listed in `core-agents.json`) are always synced. Additional agents are synced only if listed in the consumer's `agents` array in `.copilot-deps.json`.
 - **Skills** — Only those listed in the consumer's `.copilot-deps.json`
 - **Scaffold skills** — Auto-created from templates when required by an agent (never overwritten once they exist)
 - **Instructions** — `.github/copilot-instructions.md` is **never** synced (repo-specific)
@@ -47,15 +47,17 @@ Centralized distribution system for VS Code Copilot agent definitions and skills
 {
   "source": "your-org/agent-repo",
   "ref": "main",
+  "agents": ["architect", "backend-engineer", "frontend-engineer"],
   "skills": ["vue-pro", "fastify-pro", "monitor-ci"]
 }
 ```
 
-| Field    | Required | Description                                    |
-| -------- | -------- | ---------------------------------------------- |
-| `source` | Yes      | GitHub `owner/repo` of the agent-repo          |
-| `ref`    | No       | Branch/tag to sync from (default: `main`)      |
-| `skills` | Yes      | Array of skill names to sync (see table below) |
+| Field    | Required | Description                                                       |
+| -------- | -------- | ----------------------------------------------------------------- |
+| `source` | Yes      | GitHub `owner/repo` of the agent-repo                             |
+| `ref`    | No       | Branch/tag to sync from (default: `main`)                         |
+| `agents` | No       | Array of additional agent names to sync (core agents always sync) |
+| `skills` | No       | Array of skill names to sync (default: `[]`; see table below)     |
 
 ### 2. Add the workflow
 
@@ -69,6 +71,33 @@ Either trigger the workflow manually (Actions → Sync copilot deps → Run work
 git clone --depth 1 https://github.com/your-org/agents.git /tmp/agent-repo
 node /tmp/agent-repo/sync.mjs
 ```
+
+## Available Agents
+
+### Core (always synced)
+
+| Agent                        | Description                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `rug-orchestrator`           | Orchestration agent that decomposes requests, delegates to subagents, and validates outcomes |
+| `foundry`                    | Design, create, and maintain VS Code agent and skill infrastructure                          |
+| `code-reviewer`              | Post-implementation code reviewer for correctness, security, performance, and style          |
+| `software-engineer-agent-v1` | Expert-level autonomous software engineering agent                                           |
+| `handoff`                    | Generates context handoff documents to resume work in a new chat                             |
+| `context7`                   | Expert in latest library versions and best practices using up-to-date documentation          |
+
+### Optional (opt-in via `agents` array)
+
+| Agent                         | Description                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------- |
+| `app-store-deployment-expert` | Mobile app deployment — App Store Connect, Google Play Console, code signing, CI/CD         |
+| `architect`                   | Designs scalable systems, reviews architecture, and produces actionable specs               |
+| `backend-engineer`            | Server-side specialist for APIs, databases, auth — dynamically loads framework skills       |
+| `ci-monitor-subagent`         | CI helper that fetches CI status, retrieves fix details, and updates self-healing fixes     |
+| `frontend-engineer`           | Builds and optimizes frontend web apps with framework-aware skill loading                   |
+| `full-stack-engineer`         | Cross-layer engineer implementing features end-to-end across all layers                     |
+| `infrastructure-engineer`     | Containerization, reverse proxies, CI/CD pipelines, monorepo tooling, and deployment        |
+| `mobile-engineer`             | Native and cross-platform mobile engineer — iOS (SwiftUI), Android (Kotlin), Flutter        |
+| `test-writer`                 | Test generation specialist that dynamically loads framework skills for comprehensive suites |
 
 ## Available Skills
 

@@ -13,69 +13,13 @@
       }
     ]
   },
-  "fastify-expert": {
-    "skills": [
-      {
-        "name": "fastify-pro",
-        "type": "bundled",
-        "location": "skills/fastify-pro",
-        "description": "Fastify best practices, patterns, hooks, security, testing, and TypeScript references"
-      }
-    ]
-  },
-  "vuejs-expert": {
-    "skills": [
-      {
-        "name": "vue-pro",
-        "type": "bundled",
-        "location": "skills/vue-pro",
-        "description": "Vue 3 best practices, Composition API patterns, state management, performance, and TypeScript references"
-      }
-    ]
-  },
-  "supabase-expert": {
-    "skills": [
-      {
-        "name": "supabase-pro",
-        "type": "bundled",
-        "location": "skills/supabase-pro",
-        "description": "Supabase auth, migrations, API patterns, security, storage, and TypeScript references"
-      }
-    ]
-  },
-  "swiftui-expert": {
+  "mobile-engineer": {
     "skills": [
       {
         "name": "swiftui-pro",
         "type": "bundled",
         "location": "skills/swiftui-pro",
         "description": "SwiftUI views, navigation, data flow, accessibility, performance, and Swift references"
-      }
-    ]
-  },
-  "pwa-expert": {
-    "skills": [
-      {
-        "name": "pwa-pro",
-        "type": "bundled",
-        "location": "skills/pwa-pro",
-        "description": "PWA service workers, caching strategies, push notifications, offline support, and Vite PWA plugin references"
-      }
-    ]
-  },
-  "backend-engineer": {
-    "skills": [
-      {
-        "name": "mediatr-pro",
-        "type": "bundled",
-        "location": "skills/mediatr-pro",
-        "description": "MediatR best practices, CQRS patterns, pipeline behaviors, handlers, and testing references"
-      },
-      {
-        "name": "dapper-pro",
-        "type": "bundled",
-        "location": "skills/dapper-pro",
-        "description": "Dapper best practices, query methods, multi-mapping, transactions, type handlers, and testing references"
       }
     ]
   }
