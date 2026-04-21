@@ -10,6 +10,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -62,6 +63,12 @@ function listFiles(dir, filter) {
   });
 }
 
+/** Extract the name: field from a YAML frontmatter body string. */
+function extractFrontmatterName(frontmatterBody) {
+  const match = frontmatterBody.match(/^name:\s*['"]?(.*?)['"]?\s*$/m);
+  return match ? match[1] : null;
+}
+
 // ---------------------------------------------------------------------------
 // Sync: Agents
 // ---------------------------------------------------------------------------
@@ -83,7 +90,7 @@ function syncAgents(sourceRoot, targetRoot, requestedAgents) {
   );
 
   if (srcAgents.size === 0) {
-    console.log('  ⚠  No requested .agent.md files found in source repo.');
+    console.log('  ⚠️  No requested .agent.md files found in source repo.');
     return { added: [], updated: [], removed: [] };
   }
 
@@ -234,11 +241,89 @@ function checkSkillDeps(
 
   for (const w of warnings) {
     console.log(
-      `  ⚠ Agent "${w.agent}" requires skill "${w.skill}" — add it to your .copilot-deps.json skills array`,
+      `  ⚠️ Agent "${w.agent}" requires skill "${w.skill}" — add it to your .copilot-deps.json skills array`,
     );
   }
 
   return { warnings, scaffolded, skipped, templateMissing };
+}
+
+// ---------------------------------------------------------------------------
+// Post-Sync: Update RUG Agent Roster
+// ---------------------------------------------------------------------------
+
+function updateRugAgentRoster(targetRoot) {
+  const agentDir = join(targetRoot, '.github', 'agents');
+  const rugFile = join(agentDir, 'rug-orchestrator.agent.md');
+
+  if (!existsSync(rugFile)) return;
+
+  const rugContent = readFileSync(rugFile, 'utf-8');
+  const fmMatch = rugContent.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fmMatch) {
+    console.log(
+      '  ⚠️  rug-orchestrator.agent.md has no frontmatter — skipping roster update',
+    );
+    return;
+  }
+
+  const rugName = extractFrontmatterName(fmMatch[1]);
+
+  // Collect names from all agent files in the consumer's agents directory
+  const agentFiles = listFiles(agentDir, (f) => f.endsWith('.agent.md'));
+  const agentNames = [];
+
+  for (const file of agentFiles) {
+    if (file === 'rug-orchestrator.agent.md') continue;
+
+    const content = readFileSync(join(agentDir, file), 'utf-8');
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!match) continue;
+
+    const name = extractFrontmatterName(match[1]);
+    if (name && name !== rugName) {
+      agentNames.push(name);
+    }
+  }
+
+  const uniqueAgentNames = [...new Set(agentNames)].sort();
+
+  // Build the new agents field in flow-sequence format
+  let newAgentsField;
+  if (uniqueAgentNames.length === 0) {
+    newAgentsField = 'agents: []';
+  } else {
+    const items = uniqueAgentNames
+      .map((n) => `    '${n.replace(/'/g, "''")}',`)
+      .join('\n');
+    newAgentsField = `agents:\n  [\n${items}\n  ]`;
+  }
+
+  // Replace or add the agents field in frontmatter
+  const frontmatter = fmMatch[1];
+  const agentsRegex = /^agents:\s*\[[\s\S]*?\]/m;
+
+  let newFrontmatter;
+  if (agentsRegex.test(frontmatter)) {
+    newFrontmatter = frontmatter.replace(agentsRegex, newAgentsField);
+  } else {
+    newFrontmatter = frontmatter.trimEnd() + '\n' + newAgentsField;
+  }
+
+  const newContent = rugContent.replace(
+    /^---\r?\n[\s\S]*?\r?\n---/,
+    `---\n${newFrontmatter}\n---`,
+  );
+
+  writeFileSync(rugFile, newContent, 'utf-8');
+
+  if (uniqueAgentNames.length > 0) {
+    console.log(
+      `  ✅ Updated RUG agent roster: [${uniqueAgentNames.join(', ')}]`,
+    );
+  } else {
+    console.log('  ✅ Updated RUG agent roster: (no other agents found)');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -252,15 +337,15 @@ function printSummary(agentResult, skillResult, depResult) {
   console.log('Agents (.github/agents/):');
   if (agentResult.added.length) {
     console.log(`  Added (${agentResult.added.length}):`);
-    agentResult.added.forEach((f) => console.log(`    + ${f}`));
+    agentResult.added.forEach((f) => console.log(`    ✅ ${f}`));
   }
   if (agentResult.updated.length) {
     console.log(`  Updated (${agentResult.updated.length}):`);
-    agentResult.updated.forEach((f) => console.log(`    ~ ${f}`));
+    agentResult.updated.forEach((f) => console.log(`    🔄 ${f}`));
   }
   if (agentResult.removed.length) {
     console.log(`  Removed (${agentResult.removed.length}):`);
-    agentResult.removed.forEach((f) => console.log(`    - ${f}`));
+    agentResult.removed.forEach((f) => console.log(`    ❌ ${f}`));
   }
   const unchanged =
     agentResult.added.length === 0 &&
@@ -273,11 +358,13 @@ function printSummary(agentResult, skillResult, depResult) {
   // Skills
   console.log('\nSkills:');
   if (skillResult.synced.length) {
-    skillResult.synced.forEach((s) => console.log(`  ✔ ${s.name} → ${s.dest}`));
+    skillResult.synced.forEach((s) =>
+      console.log(`  ✅ ${s.name} → ${s.dest}`),
+    );
   }
   if (skillResult.notFound.length) {
     skillResult.notFound.forEach((s) =>
-      console.log(`  ⚠ ${s} — not found in source repo`),
+      console.log(`  ⚠️ ${s} — not found in source repo`),
     );
   }
   if (skillResult.synced.length === 0 && skillResult.notFound.length === 0) {
@@ -299,20 +386,20 @@ function printSummary(agentResult, skillResult, depResult) {
     if (depResult.skipped.length) {
       hasOutput = true;
       depResult.skipped.forEach((s) =>
-        console.log(`  ✔ ${s.skill} → already exists at ${s.path}`),
+        console.log(`  ✅ ${s.skill} → already exists at ${s.path}`),
       );
     }
     if (depResult.warnings.length) {
       hasOutput = true;
       depResult.warnings.forEach((w) =>
-        console.log(`  ⚠ ${w.skill} — missing (required by ${w.agent})`),
+        console.log(`  ⚠️ ${w.skill} — missing (required by ${w.agent})`),
       );
     }
     if (depResult.templateMissing.length) {
       hasOutput = true;
       depResult.templateMissing.forEach((t) =>
         console.log(
-          `  ⚠ ${t.skill} — template not found (required by ${t.agent})`,
+          `  ❌ ${t.skill} — template not found (required by ${t.agent})`,
         ),
       );
     }
@@ -369,6 +456,9 @@ function main() {
     console.log('Checking skill dependencies …');
     const depResult = checkSkillDeps(tmp, cwd, skills, requestedAgents);
 
+    console.log('Updating RUG agent roster …');
+    updateRugAgentRoster(cwd);
+
     printSummary(agentResult, skillResult, depResult);
 
     // Warn if rug-routing was updated and local-routing exists in target
@@ -378,7 +468,7 @@ function main() {
       existsSync(join(cwd, '.github', 'skills', 'local-routing', 'SKILL.md'))
     ) {
       console.log(
-        '  ⚠ rug-routing was updated — review .github/skills/local-routing/SKILL.md for new agents or routing changes',
+        '  ⚠️ rug-routing was updated — review .github/skills/local-routing/SKILL.md for new agents or routing changes',
       );
     }
   } finally {
