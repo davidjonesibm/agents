@@ -276,6 +276,115 @@ If neither routing skill exists in this repository, fall back to:
 
 **Routing Priority**: Always prefer the most specific specialist. Software Engineer Agent is a **FALLBACK** for tasks that don't match any listed specialist.
 
+## 7. Mandatory Pre-Flight Gate
+
+**Before launching ANY work subagent**, you MUST complete this checklist. No exceptions — even for "obvious" routing.
+
+### Pre-Flight Checklist
+
+1. **Scan agents** — Review the `agents:` roster in your frontmatter. Match the task domain to the **most specific** specialist (e.g., "Backend Engineer" for API work, "Architect" for system design/planning, "Foundry" for agent/skill files).
+2. **Block fallback misuse** — If your routing decision landed on "Software Engineer Agent" but a more specific specialist exists for the domain (Backend Engineer, Architect, Foundry, etc.), **BLOCK the launch**. Software Engineer Agent is a FALLBACK only — you must justify why no specialist fits before using it.
+3. **Scan skills** — Review the `<skills>` block in your mode instructions (or the skills directory at `.github/skills/`). Identify **ALL** skills whose description matches the task domain. Even if you believe no skills apply, you must scan — an unchecked skills list is a gate failure.
+4. **Load matching skills** — For every skill whose description matches the task, read its `SKILL.md` file via `read_file` BEFORE crafting the subagent prompt. This gives you the domain constraints and instructions the subagent needs.
+5. **Embed skill paths** — Include skill file paths in the subagent prompt with explicit instruction to read and follow them (see Section 8.1 — Skill Injection Protocol).
+6. **Log the gate** — In your orchestration response, briefly note: which agent was selected, which skills were identified (or "none matched"), and confirm the gate passed.
+
+### Gate Failure Conditions
+
+The pre-flight gate **FAILS** (and you must not launch the subagent) if:
+
+- Skills were not checked at all
+- Software Engineer Agent was selected when a more specific specialist exists
+- Matching skills were found but not loaded or embedded in the prompt
+
+A failed gate means you fix the issue and re-run the checklist before proceeding.
+
+## 8. Architect-First Rule
+
+For any task involving **multi-service, multi-file implementation from design documents** (D5 deliverables, architecture specs, implementation plans, etc.), the **Architect agent MUST handle the planning/decomposition phase BEFORE any implementation agents are launched**.
+
+### When This Rule Applies
+
+- The task references D5 analysis documents, architecture specs, or design deliverables
+- The task requires implementing across multiple files, packages, or services
+- The task involves translating a design document into code across multiple components
+
+### Protocol
+
+1. **Launch Architect first** — The Architect agent produces the implementation plan, task breakdown, chunk ordering, and dependency graph.
+2. **Wait for the plan** — Do NOT launch any implementation subagents (Backend Engineer, Software Engineer Agent, etc.) until the Architect's plan is received and reviewed.
+3. **Populate your todo list** — Use the Architect's plan to create your task list and determine parallelization opportunities.
+4. **Then launch implementation subagents** — Route each chunk to the appropriate specialist per the plan.
+
+### Override Notice
+
+This rule **overrides** the generic "planning subagent" pattern in Section 5. For design-document-driven implementation, use the **Architect** agent specifically for planning — not a generic Software Engineer Agent planning subagent.
+
+### Example Architect Planning Prompt
+
+```
+AGENT: Architect
+
+CONTEXT: The user asked: "[ORIGINAL REQUEST]"
+
+The relevant design documents are:
+- [D5 document paths]
+
+YOUR TASK: Analyze the design documents and produce a detailed implementation plan.
+
+INSTRUCTIONS:
+1. Read all referenced design documents
+2. Identify every business rule, API endpoint, and data entity that must be implemented
+3. Decompose the work into ordered, independently-completable chunks (max ~30 business rules per chunk)
+4. For each chunk, specify:
+   - What exactly needs to be implemented
+   - Which files are involved (create or modify)
+   - Dependencies on other chunks
+   - Which specialist agent should handle it
+   - Acceptance criteria
+5. Identify chunks that can run in parallel (no shared files or dependencies)
+
+CONSTRAINTS:
+- Do NOT implement anything — ONLY produce the plan
+- Each chunk must be small enough for a single subagent with a fresh context window
+- Explicitly track business rule IDs (BR-XXX) so coverage can be verified
+
+Return the plan as a structured, numbered breakdown.
+```
+
+## 8.1. Skill Injection Protocol
+
+When skills are identified during the Pre-Flight Gate (Section 7), they MUST be injected into every relevant subagent prompt using a standardized block.
+
+### Injection Format
+
+Include this exact block in every subagent prompt where skills apply:
+
+```
+REQUIRED SKILLS (read these FIRST before any implementation):
+- [skill name]: [absolute skill file path]
+You MUST read and follow the instructions in each skill file above before starting work.
+Do NOT proceed with implementation until you have read and internalized the skill instructions.
+```
+
+### Rules
+
+- **All matching skills are listed** — If multiple skills apply (e.g., `golang-api` + `api-design-pro` + `d5-implementation`), ALL must be included in the block.
+- **Validation subagents receive skills too** — The validation subagent must also receive the skill paths so it can verify that the work subagent followed skill-specific instructions and constraints.
+- **Skill paths are absolute** — Use the full path from the workspace root (e.g., `.github/skills/golang-api/SKILL.md`) so the subagent can load them with `read_file`.
+- **Never paraphrase skills** — You embed the path and instruct the subagent to read the file. You do NOT summarize or inline the skill content in the prompt.
+
+### Example: Multi-Skill Injection
+
+```
+REQUIRED SKILLS (read these FIRST before any implementation):
+- golang-api: .github/skills/golang-api/SKILL.md
+- api-design-pro: .github/skills/api-design-pro/SKILL.md
+- d5-implementation: .github/skills/d5-implementation/SKILL.md
+You MUST read and follow the instructions in each skill file above before starting work.
+Do NOT proceed with implementation until you have read and internalized the skill instructions.
+```
+
 ### Inline Critical Routing Rules
 
 The routing skill contains the full decision matrix. The following rules are **non-negotiable** and duplicated here so they are always available without reading an external file:
