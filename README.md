@@ -151,20 +151,13 @@ Merging the PR is manual — review the diff before accepting.
 
 ## Manual Sync
 
-Run from the root of your consuming repo:
+Copy `sync.sh` from this repo into the root of your consuming repo and commit it. Then whenever you want to sync:
 
 ```sh
-# Clone agent-repo to a temp directory
-git clone --depth 1 https://github.com/your-org/agents.git /tmp/agent-repo
-
-# Run sync (reads .copilot-deps.json from CWD)
-node /tmp/agent-repo/sync.mjs
-
-# Clean up
-rm -rf /tmp/agent-repo
+./sync.sh
 ```
 
-The script prints a summary of added, updated, and removed files.
+The script reads `.copilot-deps.json` from the current directory, removes any stale temp clone, clones the agent-repo at the configured ref, runs `sync.mjs`, then cleans up. No arguments needed — run it from the repo root and it handles everything.
 
 ## Adding a New Consuming Repo
 
@@ -172,7 +165,8 @@ Checklist:
 
 - [ ] Create `.copilot-deps.json` in the consuming repo root (see format above)
 - [ ] Copy `consumer-workflow.yml` → `.github/workflows/sync-copilot-deps.yml`
+- [ ] Copy `sync.sh` into the consuming repo root, run `chmod +x sync.sh`, and commit it
 - [ ] Ensure `COPILOT_SYNC_PAT` secret is accessible (org-level or add to the repo)
 - [ ] Add the repo to `consumers.json` in agent-repo (`"your-org/repo-name"`)
 - [ ] Push consumers.json change to `main`
-- [ ] Run initial sync manually or trigger the workflow via `workflow_dispatch`
+- [ ] Run initial sync: `./sync.sh`
