@@ -59,18 +59,26 @@ Centralized distribution system for VS Code Copilot agent definitions and skills
 | `agents` | No       | Array of additional agent names to sync (core agents always sync) |
 | `skills` | No       | Array of skill names to sync (default: `[]`; see table below)     |
 
-### 2. Add the workflow
+### 2. Copy `sync.sh` into the repo root
 
-Copy `consumer-workflow.yml` from this repo to `.github/workflows/sync-copilot-deps.yml` in the consuming repo.
+Copy `sync.sh` from this repo into the root of the consuming repo, make it executable, and commit it:
+
+```sh
+chmod +x sync.sh
+git add sync.sh && git commit -m "chore: add copilot deps sync script"
+```
 
 ### 3. Run initial sync
 
-Either trigger the workflow manually (Actions → Sync copilot deps → Run workflow) or run locally:
-
 ```sh
-git clone --depth 1 https://github.com/your-org/agents.git /tmp/agent-repo
-node /tmp/agent-repo/sync.mjs
+./sync.sh
 ```
+
+The script reads `.copilot-deps.json`, clones the agent-repo at the configured ref, runs `sync.mjs`, then cleans up. No arguments needed — run it from the repo root.
+
+### 4. (Optional) Add the GitHub Actions workflow
+
+For automatic sync-on-push, copy `consumer-workflow.yml` to `.github/workflows/sync-copilot-deps.yml` in the consuming repo. See [How Updates Work](#how-updates-work) for details.
 
 ## Available Agents
 
@@ -149,24 +157,13 @@ Currently the only scaffold skill is `rug-routing`, required by the `rug-orchest
 
 Merging the PR is manual — review the diff before accepting.
 
-## Manual Sync
-
-Copy `sync.sh` from this repo into the root of your consuming repo and commit it. Then whenever you want to sync:
-
-```sh
-./sync.sh
-```
-
-The script reads `.copilot-deps.json` from the current directory, removes any stale temp clone, clones the agent-repo at the configured ref, runs `sync.mjs`, then cleans up. No arguments needed — run it from the repo root and it handles everything.
-
 ## Adding a New Consuming Repo
 
 Checklist:
 
 - [ ] Create `.copilot-deps.json` in the consuming repo root (see format above)
-- [ ] Copy `consumer-workflow.yml` → `.github/workflows/sync-copilot-deps.yml`
 - [ ] Copy `sync.sh` into the consuming repo root, run `chmod +x sync.sh`, and commit it
-- [ ] Ensure `COPILOT_SYNC_PAT` secret is accessible (org-level or add to the repo)
-- [ ] Add the repo to `consumers.json` in agent-repo (`"your-org/repo-name"`)
-- [ ] Push consumers.json change to `main`
 - [ ] Run initial sync: `./sync.sh`
+- [ ] (Optional) Add the repo to `consumers.json` in agent-repo (`"your-org/repo-name"`) and push to `main`
+- [ ] (Optional) Copy `consumer-workflow.yml` → `.github/workflows/sync-copilot-deps.yml` for automatic sync-on-push
+- [ ] (Optional) Ensure `COPILOT_SYNC_PAT` secret is accessible if using the GitHub Actions workflow
