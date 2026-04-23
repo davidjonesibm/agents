@@ -69,6 +69,29 @@ function extractFrontmatterName(frontmatterBody) {
   return match ? match[1] : null;
 }
 
+/**
+ * Strip the agents: [...] field from frontmatter so roster-only differences
+ * in rug-orchestrator.agent.md don't cause a spurious "updated" on every sync.
+ */
+function stripAgentsField(content) {
+  return content.replace(/^agents:\s*\[[\s\S]*?\]\s*\n?/m, '');
+}
+
+/**
+ * Compare two file buffers for equality, ignoring the agents: frontmatter
+ * field for rug-orchestrator.agent.md (managed by updateRugAgentRoster).
+ */
+function contentsEqual(filename, srcBuf, tgtBuf) {
+  if (srcBuf.equals(tgtBuf)) return true;
+  if (filename === 'rug-orchestrator.agent.md') {
+    return (
+      stripAgentsField(srcBuf.toString('utf-8')) ===
+      stripAgentsField(tgtBuf.toString('utf-8'))
+    );
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Sync: Agents
 // ---------------------------------------------------------------------------
@@ -112,7 +135,7 @@ function syncAgents(sourceRoot, targetRoot, requestedAgents) {
     if (!existed) {
       cpSync(src, tgt);
       added.push(file);
-    } else if (!srcContent.equals(tgtContent)) {
+    } else if (!contentsEqual(file, srcContent, tgtContent)) {
       cpSync(src, tgt);
       updated.push(file);
     }
@@ -151,8 +174,37 @@ function findSkillSource(sourceRoot, skillName) {
   return null;
 }
 
+/** Read all files in a directory recursively, returning a Map of relPath→Buffer. */
+function snapshotDir(dir) {
+  const map = new Map();
+  if (!existsSync(dir)) return map;
+  const walk = (base, rel) => {
+    for (const entry of readdirSync(base)) {
+      const fullPath = join(base, entry);
+      const relPath = rel ? `${rel}/${entry}` : entry;
+      if (statSync(fullPath).isDirectory()) {
+        walk(fullPath, relPath);
+      } else {
+        map.set(relPath, readFileSync(fullPath));
+      }
+    }
+  };
+  walk(dir, '');
+  return map;
+}
+
+/** Return true if two directory snapshots have identical file sets and contents. */
+function snapshotsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const [key, val] of a) {
+    const other = b.get(key);
+    if (!other || !val.equals(other)) return false;
+  }
+  return true;
+}
+
 function syncSkills(sourceRoot, targetRoot, skillNames) {
-  const results = { synced: [], notFound: [] };
+  const results = { synced: [], unchanged: [], notFound: [] };
 
   for (const name of skillNames) {
     const found = findSkillSource(sourceRoot, name);
@@ -163,6 +215,9 @@ function syncSkills(sourceRoot, targetRoot, skillNames) {
 
     const tgtDir = join(targetRoot, found.tgtBase, name);
 
+    // Snapshot existing target contents before wiping
+    const before = snapshotDir(tgtDir);
+
     // Remove existing skill directory so we get a clean copy
     if (existsSync(tgtDir)) {
       rmSync(tgtDir, { recursive: true, force: true });
@@ -170,7 +225,15 @@ function syncSkills(sourceRoot, targetRoot, skillNames) {
 
     mkdirSync(tgtDir, { recursive: true });
     cpSync(found.srcPath, tgtDir, { recursive: true });
-    results.synced.push({ name, dest: join(found.tgtBase, name) });
+
+    const after = snapshotDir(tgtDir);
+    const dest = join(found.tgtBase, name);
+
+    if (before.size > 0 && snapshotsEqual(before, after)) {
+      results.unchanged.push({ name, dest });
+    } else {
+      results.synced.push({ name, dest });
+    }
   }
 
   return results;
