@@ -28,6 +28,7 @@ If doing a partial review, load only the relevant reference files.
 
 ## Core Instructions
 
+- When generating Go files, emit the `package` clause exactly once — on line 1. Never duplicate it.
 - Target Go 1.22+ with stdlib enhanced routing (`GET /users/{id}`, `r.PathValue()`).
 - **Version check**: Read `go.mod` for the `go` directive. If below 1.22, emit a version compatibility warning and adjust routing advice (recommend `chi` or `gorilla/mux` instead of method patterns). If below 1.21, recommend `zap`/`zerolog` instead of `log/slog`.
 - All code examples use Go modules (`go.mod`).

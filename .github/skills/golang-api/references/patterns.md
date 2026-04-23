@@ -4,6 +4,21 @@ Idiomatic project layout, HTTP routing (stdlib `net/http` Go 1.22+ and Gin), han
 
 ## Project Structure
 
+- **Every Go file must have exactly one `package` declaration, on line 1.** Never emit the `package` clause more than once per file. This is a common generation bug.
+
+  ```go
+  // WRONG — duplicate package declaration
+  package main
+  package main
+
+  import "fmt"
+
+  // CORRECT — single package declaration on line 1
+  package main
+
+  import "fmt"
+  ```
+
 - Use the standard Go server layout. Keep server internals in `internal/`, entry points in `cmd/`.
 
   ```
