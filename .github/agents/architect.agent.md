@@ -48,6 +48,7 @@ handoffs:
     agent: Code Reviewer
     prompt: 'Review the architecture of [component/system] for correctness and best practices'
     send: false
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 # Architect

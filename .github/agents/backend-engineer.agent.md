@@ -54,6 +54,7 @@ handoffs:
     agent: Architect
     prompt: 'Review the API design for consistency, scalability, and best practices'
     send: false
+model: GPT-5.4 (copilot)
 ---
 
 # Backend Engineer

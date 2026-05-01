@@ -50,6 +50,7 @@ handoffs:
     agent: Architect
     prompt: "Design the API contract for this mobile feature's data requirements"
     send: false
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 # Mobile Engineer

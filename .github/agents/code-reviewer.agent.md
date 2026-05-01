@@ -33,6 +33,7 @@ handoffs:
     agent: Test Writer
     prompt: Code review identified missing test coverage. Please generate comprehensive tests for the following areas:\n\n[Areas needing tests]
     send: false
+model: GPT-5.4 mini (copilot)
 ---
 
 # Code Reviewer Agent

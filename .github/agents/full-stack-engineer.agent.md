@@ -50,6 +50,7 @@ handoffs:
     agent: Infrastructure Engineer
     prompt: 'Deploy or configure infrastructure for this feature'
     send: false
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 # Full-Stack Engineer

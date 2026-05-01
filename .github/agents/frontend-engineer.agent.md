@@ -50,6 +50,7 @@ handoffs:
     agent: Infrastructure Engineer
     prompt: 'Assist with frontend build configuration or deployment pipeline'
     send: false
+model: GPT-5.4 (copilot)
 ---
 
 # Frontend Engineer

@@ -41,6 +41,7 @@ handoffs:
     agent: Test Writer
     prompt: Generate tests for the implementation.
     send: false
+model: GPT-5.4 (copilot)
 ---
 
 # Software Engineer Agent v1

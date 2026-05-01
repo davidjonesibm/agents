@@ -22,6 +22,7 @@ handoffs:
     agent: Code Reviewer
     prompt: Review the agent/skill I just created for completeness, accuracy, and format adherence.
     send: false
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 # Foundry — Agent & Skill Infrastructure Specialist
