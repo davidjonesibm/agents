@@ -52,7 +52,11 @@ Example output:
 
 ```javascript
 // Before — duplicating token fetch logic in every pre-request script
-const resp = await insomnia.sendRequest({ url: '...', method: 'POST' });
+const resp = await new Promise((resolve, reject) => {
+  insomnia.sendRequest({ url: '...', method: 'POST' }, (err, r) => {
+    err ? reject(err) : resolve(r);
+  });
+});
 insomnia.environment.set('token', resp.json().access_token);
 
 // After — run token fetch once in a dedicated "Get Token" request's after-response script
