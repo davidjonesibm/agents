@@ -8,10 +8,10 @@ Critical rules, performance tips, common pitfalls, and anti-patterns for Testcon
 
 ```csharp
 // BAD — `latest` may introduce breaking changes silently
-var container = new PostgreSqlBuilder().WithImage("postgres:latest").Build();
+var container = new PostgreSqlBuilder("postgres:latest").Build();
 
 // GOOD — pinned version
-var container = new PostgreSqlBuilder().WithImage("postgres:15.1").Build();
+var container = new PostgreSqlBuilder("postgres:15.1").Build();
 ```
 
 ### 2. Always Use Random Host Ports
@@ -44,7 +44,7 @@ var url = $"http://{container.Hostname}:{container.GetMappedPublicPort(8080)}";
 
 ```csharp
 // BAD — missing disposal leaks containers (Ryuk cleans up eventually, but not immediately)
-var container = new PostgreSqlBuilder().Build();
+var container = new PostgreSqlBuilder("postgres:15.1").Build();
 await container.StartAsync();
 // ... tests ... (no disposal)
 
@@ -116,7 +116,7 @@ public sealed class MyFixture(IMessageSink sink)
     : ContainerFixture<PostgreSqlBuilder, PostgreSqlContainer>(sink)
 {
     protected override PostgreSqlBuilder Configure()
-        => new PostgreSqlBuilder().WithImage("postgres:15.1");
+        => new PostgreSqlBuilder("postgres:15.1");
 }
 ```
 
@@ -147,7 +147,7 @@ _ = new ContainerBuilder().WithImage("postgres:15.1")
     .Build();
 
 // GOOD — PostgreSqlBuilder uses pg_isready internally
-var postgres = new PostgreSqlBuilder().WithImage("postgres:15.1").Build();
+var postgres = new PostgreSqlBuilder("postgres:15.1").Build();
 ```
 
 ## Common Pitfalls

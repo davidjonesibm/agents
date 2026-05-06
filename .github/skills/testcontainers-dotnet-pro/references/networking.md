@@ -54,8 +54,7 @@ var network = new NetworkBuilder()
     .WithName(Guid.NewGuid().ToString("D"))
     .Build();
 
-var dbContainer = new PostgreSqlBuilder()
-    .WithImage("postgres:15.1")
+var dbContainer = new PostgreSqlBuilder("postgres:15.1")
     .WithNetwork(network)
     .WithNetworkAliases("db")
     .Build();

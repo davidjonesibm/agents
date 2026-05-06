@@ -63,8 +63,7 @@ var container = new ContainerBuilder().WithImage("postgres:15.1")
     .Build();
 
 // GOOD — use the pre-configured module
-var container = new PostgreSqlBuilder()
-    .WithImage("postgres:15.1")
+var container = new PostgreSqlBuilder("postgres:15.1")
     .Build();
 await container.StartAsync();
 
@@ -75,8 +74,8 @@ var connectionString = container.GetConnectionString();
 
 ```xml
 <!-- Test project only -->
-<PackageReference Include="Testcontainers.PostgreSql" Version="4.11.0" />
-<PackageReference Include="Testcontainers.Xunit" Version="4.11.0" />
+<PackageReference Include="Testcontainers.PostgreSql" Version="4.12.0" />
+<PackageReference Include="Testcontainers.Xunit" Version="4.12.0" />
 ```
 
 Always pin versions in `.csproj`. Avoid floating version ranges (`*`, `4.*`) in test projects.

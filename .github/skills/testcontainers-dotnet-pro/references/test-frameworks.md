@@ -11,8 +11,7 @@ Simplest approach, works with any container. Container is created and started pe
 ```csharp
 public sealed class CustomerServiceTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:15.1")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:15.1")
         .Build();
 
     public Task InitializeAsync() => _postgres.StartAsync();
@@ -136,7 +135,7 @@ public sealed class CustomerTests
     [OneTimeSetUp]  // Shared across all tests in the class
     public async Task SetUp()
     {
-        _postgres = new PostgreSqlBuilder().WithImage("postgres:15.1").Build();
+        _postgres = new PostgreSqlBuilder("postgres:15.1").Build();
         await _postgres.StartAsync();
     }
 
@@ -167,7 +166,7 @@ public sealed class CustomerTests
     [ClassInitialize]  // Shared across all tests in the class
     public static async Task ClassSetUp(TestContext _)
     {
-        _postgres = new PostgreSqlBuilder().WithImage("postgres:15.1").Build();
+        _postgres = new PostgreSqlBuilder("postgres:15.1").Build();
         await _postgres.StartAsync();
     }
 

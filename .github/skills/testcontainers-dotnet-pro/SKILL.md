@@ -31,12 +31,13 @@ If doing a partial review, load only the relevant reference files.
 
 ## Core Instructions
 
-- Target Testcontainers for .NET **4.x** (current: 4.11.0).
+- Target Testcontainers for .NET **4.x** (current: 4.12.0).
 - Requires a Docker-API-compatible runtime: Docker Desktop, Podman with Docker socket, Rancher Desktop, or remote Docker.
 - Supports .NET Standard 2.0+. Prefer .NET 8 (LTS) for new projects.
 - Always dispose containers after tests — never leave them running.
 - Always use random host ports; never bind to a fixed host port.
 - Always access the container via `container.Hostname`, never via `localhost` or `127.0.0.1`.
+- Always pass the image to the module builder constructor: `new PostgreSqlBuilder("postgres:15.1")`. The parameterless constructor is obsolete since 4.10.0.
 - Always pin image versions (`postgres:15.1`, not `postgres:latest`).
 - Never disable the Resource Reaper (Ryuk) unless the CI environment has its own cleanup mechanism.
 

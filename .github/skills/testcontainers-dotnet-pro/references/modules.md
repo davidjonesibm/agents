@@ -29,8 +29,7 @@ Full list: https://dotnet.testcontainers.org/modules/
 dotnet add package Testcontainers.PostgreSql
 
 // Usage
-var postgres = new PostgreSqlBuilder()
-    .WithImage("postgres:15.1")
+var postgres = new PostgreSqlBuilder("postgres:15.1")
     .WithDatabase("mydb")
     .WithUsername("testuser")
     .WithPassword("testpassword")
@@ -41,8 +40,7 @@ var cs = postgres.GetConnectionString();
 // "Host=localhost;Port=54321;Database=mydb;Username=testuser;Password=testpassword"
 
 // Seed with init scripts (auto-executed by the Postgres image)
-var postgres = new PostgreSqlBuilder()
-    .WithImage("postgres:15.1")
+var postgres = new PostgreSqlBuilder("postgres:15.1")
     .WithResourceMapping("schema.sql", "/docker-entrypoint-initdb.d/")
     .Build();
 ```
@@ -52,8 +50,7 @@ var postgres = new PostgreSqlBuilder()
 ```csharp
 dotnet add package Testcontainers.MsSql
 
-var mssql = new MsSqlBuilder()
-    .WithImage("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
+var mssql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
     .Build();
 
 await mssql.StartAsync();
@@ -67,8 +64,7 @@ var cs = mssql.GetConnectionString();
 ```csharp
 dotnet add package Testcontainers.Redis
 
-var redis = new RedisBuilder()
-    .WithImage("redis:7.0")
+var redis = new RedisBuilder("redis:7.0")
     .Build();
 
 await redis.StartAsync();
@@ -84,8 +80,7 @@ var db = mux.GetDatabase();
 ```csharp
 dotnet add package Testcontainers.RabbitMq
 
-var rabbitmq = new RabbitMqBuilder()
-    .WithImage("rabbitmq:3.11")
+var rabbitmq = new RabbitMqBuilder("rabbitmq:3.11")
     .Build();
 
 await rabbitmq.StartAsync();
@@ -97,8 +92,7 @@ var cs = rabbitmq.GetConnectionString();  // "amqp://guest:guest@localhost:5672"
 ```csharp
 dotnet add package Testcontainers.Kafka
 
-var kafka = new KafkaBuilder()
-    .WithImage("confluentinc/cp-kafka:6.1.9")
+var kafka = new KafkaBuilder("confluentinc/cp-kafka:6.1.9")
     .Build();
 
 await kafka.StartAsync();
@@ -120,8 +114,7 @@ var producer = new ProducerBuilder<Null, string>(
 ```csharp
 dotnet add package Testcontainers.MongoDb
 
-var mongo = new MongoDbBuilder()
-    .WithImage("mongo:6.0")
+var mongo = new MongoDbBuilder("mongo:6.0")
     .Build();
 
 await mongo.StartAsync();
@@ -135,8 +128,7 @@ var client = new MongoClient(mongo.GetConnectionString());
 ```csharp
 dotnet add package Testcontainers.Elasticsearch
 
-var elastic = new ElasticsearchBuilder()
-    .WithImage("elasticsearch:8.6.1")
+var elastic = new ElasticsearchBuilder("elasticsearch:8.6.1")
     .Build();
 
 await elastic.StartAsync();
@@ -150,13 +142,11 @@ var client = new ElasticsearchClient(new Uri(elastic.GetConnectionString()));
 Always pin the image version, even for modules that have defaults:
 
 ```csharp
-// BAD — using module default (may be outdated)
+// BAD — parameterless constructor is obsolete since 4.10.0 and uses a potentially outdated default image
 var postgres = new PostgreSqlBuilder().Build();
 
-// GOOD — pin the version explicitly
-var postgres = new PostgreSqlBuilder()
-    .WithImage("postgres:16.2")
-    .Build();
+// GOOD — pin the version explicitly via constructor
+var postgres = new PostgreSqlBuilder("postgres:16.2").Build();
 ```
 
 ## One-Shot Containers (Migrations)

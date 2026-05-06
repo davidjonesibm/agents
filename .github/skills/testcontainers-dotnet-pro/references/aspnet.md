@@ -9,8 +9,7 @@ Start the container in `IAsyncLifetime.InitializeAsync`, then inject the connect
 ```csharp
 public sealed class ApiTests : IAsyncLifetime
 {
-    private readonly RedisContainer _redis = new RedisBuilder()
-        .WithImage("redis:7.0")
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7.0")
         .Build();
 
     private WebApplicationFactory<Program> _factory = null!;
@@ -51,8 +50,7 @@ Encapsulate both the container and its configuration in a custom `IConfiguration
 ```csharp
 private sealed class RedisConfigurationSource : IConfigurationSource
 {
-    private readonly RedisContainer _redis = new RedisBuilder()
-        .WithImage("redis:7.0")
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7.0")
         .Build();
 
     public IConfigurationProvider Build(IConfigurationBuilder builder)
@@ -93,8 +91,7 @@ public sealed class WeatherForecastFixture : IAsyncLifetime
 
     private readonly INetwork _network = new NetworkBuilder().Build();
 
-    private readonly MsSqlContainer _db = new MsSqlBuilder()
-        .WithImage("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
+    private readonly MsSqlContainer _db = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
         .WithNetwork(new NetworkBuilder().Build())    // replaced below
         .WithNetworkAliases(DbAlias)
         .Build();

@@ -23,15 +23,14 @@ Use `IAsyncLifetime` when using the generic container API directly with xUnit wi
 public class MyTests
 {
     private readonly PostgreSqlContainer _postgres;
-    public MyTests() { _postgres = new PostgreSqlBuilder().Build(); _postgres.StartAsync().Wait(); }
+    public MyTests() { _postgres = new PostgreSqlBuilder("postgres:15.1").Build(); _postgres.StartAsync().Wait(); }
     ~MyTests() { _postgres.DisposeAsync().AsTask().Wait(); }
 }
 
 // GOOD — IAsyncLifetime for proper async start/stop per-class
 public sealed class CustomerServiceTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:15.1")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:15.1")
         .Build();
 
     public Task InitializeAsync() => _postgres.StartAsync();
@@ -56,8 +55,7 @@ Starting containers is expensive. Share them using `IClassFixture<T>`:
 // Per-class shared container with IClassFixture
 public sealed class PostgresFixture : IAsyncLifetime
 {
-    public PostgreSqlContainer Container { get; } = new PostgreSqlBuilder()
-        .WithImage("postgres:15.1")
+    public PostgreSqlContainer Container { get; } = new PostgreSqlBuilder("postgres:15.1")
         .Build();
 
     public Task InitializeAsync() => Container.StartAsync();
