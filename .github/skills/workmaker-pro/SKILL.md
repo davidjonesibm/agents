@@ -8,7 +8,8 @@ description: >-
   Use when writing user stories, building a product backlog, decomposing epics into stories,
   splitting large stories, generating acceptance criteria, or planning iterative delivery.
   Trigger keywords: user story, user stories, story writing, backlog, story splitting, epic,
-  feature, story mapping, acceptance criteria, INVEST, job stories, work items, agile decomposition.
+  feature, story mapping, acceptance criteria, INVEST, job stories, work items, agile decomposition,
+  ADO import, Azure DevOps import, CSV export, work item CSV, ADO template.
 ---
 
 Generate high-quality user stories and work items at the epic, feature, and story layers — tool-agnostic markdown, portable to any delivery tool.
@@ -64,3 +65,4 @@ For a backlog (multiple stories), group by the chosen strategy hierarchy and pre
 - `references/quality.md` — INVEST self-check table, acceptance criteria formats (Given/When/Then, checklist, scenario-based), and definition of done guidance.
 - `references/patterns.md` — vertical slice preference, story splitting patterns (workflow steps, business rules, data variations, interface variations, simple/complex, defer performance, break out a spike).
 - `references/anti-patterns.md` — common story-writing mistakes with before/after rewrites.
+- `references/ado-import.md` — CSV schema, hierarchy rules, and generation instructions for Azure DevOps bulk import (Title 1/2/3 parent-child format). Load when the user asks to export or format work items for ADO import.
