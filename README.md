@@ -105,6 +105,7 @@ For automatic sync-on-push, copy `consumer-workflow.yml` to `.github/workflows/s
 | `full-stack-engineer`         | Cross-layer engineer implementing features end-to-end across all layers                     |
 | `infrastructure-engineer`     | Containerization, reverse proxies, CI/CD pipelines, monorepo tooling, and deployment        |
 | `mobile-engineer`             | Native and cross-platform mobile engineer — iOS (SwiftUI), Android (Kotlin), Flutter        |
+| `product-owner`               | Product ownership specialist — user stories, backlog decomposition, story mapping, acceptance criteria |
 | `test-writer`                 | Test generation specialist that dynamically loads framework skills for comprehensive suites |
 
 ## Available Skills
@@ -134,6 +135,7 @@ For automatic sync-on-push, copy `consumer-workflow.yml` to `.github/workflows/s
 | `supabase-pro`            | `.github/skills/` | Supabase code review — RLS policies, auth, storage, migrations, TypeScript integration                                          |
 | `swiftui-pro`             | `.github/skills/` | SwiftUI code review — modern APIs, maintainability, performance                                                                 |
 | `vue-pro`                 | `.github/skills/` | Vue 3 code review — Composition API, TypeScript, Pinia state management, performance                                            |
+| `workmaker-pro`            | `.github/skills/` | User story generation — epics, features, stories, job stories, INVEST criteria, story splitting, acceptance criteria              |
 
 ## Skill Dependencies
 

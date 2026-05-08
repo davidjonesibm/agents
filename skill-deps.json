@@ -22,5 +22,15 @@
         "description": "SwiftUI views, navigation, data flow, accessibility, performance, and Swift references"
       }
     ]
+  },
+  "product-owner": {
+    "skills": [
+      {
+        "name": "workmaker-pro",
+        "type": "bundled",
+        "location": "skills/workmaker-pro",
+        "description": "User story generation, backlog decomposition, epics, features, acceptance criteria, and INVEST-quality stories"
+      }
+    ]
   }
 }

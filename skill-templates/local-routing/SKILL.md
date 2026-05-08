@@ -42,6 +42,7 @@ The core agent roster lives in `rug-routing`. The table below lists all **option
 | <!-- | 7     | **Test Writer**                 | Testing                    | Test generation for any language/framework. Writes comprehensive test suites                | Framework skills loaded dynamically per test target                                    | --> |
 | <!-- | 8     | **App Store Deployment Expert** | App distribution           | Code signing, store submission, provisioning profiles, app metadata, release workflows      | —                                                                                      | --> |
 | <!-- | 9     | **CI Monitor Subagent**         | CI monitoring              | CI pipeline status, build failures, self-healing fixes. Single tool-call per invocation     | monitor-ci                                                                             | --> |
+| <!-- | 10    | **Product Owner**               | Product & backlog          | User stories, job stories, epics, features, backlog decomposition, story splitting, story mapping, acceptance criteria, product discovery | workmaker-pro                                                               | --> |
 
 ---
 
@@ -105,6 +106,10 @@ Route tasks to the correct agent based on the current phase of work. Uncomment r
 
 <!-- Uncomment app store route when app-store-deployment-expert is enabled: -->
 <!-- | **App store deployment** — signing, submission, profiles | **App Store Deployment Expert** | Code signing, provisioning, store metadata | -->
+
+<!-- Uncomment Product Owner routes when product-owner is enabled: -->
+<!-- | **Story writing** — user stories, job stories, acceptance criteria | **Product Owner** | Story and work item generation | -->
+<!-- | **Backlog** — epics, features, story decomposition, story splitting, story mapping | **Product Owner** | Backlog management and discovery | -->
 
 ---
 
