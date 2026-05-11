@@ -95,18 +95,18 @@ For automatic sync-on-push, copy `consumer-workflow.yml` to `.github/workflows/s
 
 ### Optional (opt-in via `agents` array)
 
-| Agent                         | Description                                                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------- |
-| `app-store-deployment-expert` | Mobile app deployment — App Store Connect, Google Play Console, code signing, CI/CD         |
-| `architect`                   | Designs scalable systems, reviews architecture, and produces actionable specs               |
-| `backend-engineer`            | Server-side specialist for APIs, databases, auth — dynamically loads framework skills       |
-| `ci-monitor-subagent`         | CI helper that fetches CI status, retrieves fix details, and updates self-healing fixes     |
-| `frontend-engineer`           | Builds and optimizes frontend web apps with framework-aware skill loading                   |
-| `full-stack-engineer`         | Cross-layer engineer implementing features end-to-end across all layers                     |
-| `infrastructure-engineer`     | Containerization, reverse proxies, CI/CD pipelines, monorepo tooling, and deployment        |
-| `mobile-engineer`             | Native and cross-platform mobile engineer — iOS (SwiftUI), Android (Kotlin), Flutter        |
+| Agent                         | Description                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `app-store-deployment-expert` | Mobile app deployment — App Store Connect, Google Play Console, code signing, CI/CD                    |
+| `architect`                   | Designs scalable systems, reviews architecture, and produces actionable specs                          |
+| `backend-engineer`            | Server-side specialist for APIs, databases, auth — dynamically loads framework skills                  |
+| `ci-monitor-subagent`         | CI helper that fetches CI status, retrieves fix details, and updates self-healing fixes                |
+| `frontend-engineer`           | Builds and optimizes frontend web apps with framework-aware skill loading                              |
+| `full-stack-engineer`         | Cross-layer engineer implementing features end-to-end across all layers                                |
+| `infrastructure-engineer`     | Containerization, reverse proxies, CI/CD pipelines, monorepo tooling, and deployment                   |
+| `mobile-engineer`             | Native and cross-platform mobile engineer — iOS (SwiftUI), Android (Kotlin), Flutter                   |
 | `product-owner`               | Product ownership specialist — user stories, backlog decomposition, story mapping, acceptance criteria |
-| `test-writer`                 | Test generation specialist that dynamically loads framework skills for comprehensive suites |
+| `test-writer`                 | Test generation specialist that dynamically loads framework skills for comprehensive suites            |
 
 ## Available Skills
 
@@ -130,12 +130,16 @@ For automatic sync-on-push, copy `consumer-workflow.yml` to `.github/workflows/s
 | `pocketbase-pro`          | `.github/skills/` | PocketBase code review — collection design, API rules, hooks, auth, real-time subscriptions                                     |
 | `postgres-pro`            | `.github/skills/` | PostgreSQL code review — schema design, query optimization, indexing, RLS, PL/pgSQL, performance                                |
 | `pwa-pro`                 | `.github/skills/` | PWA code review — service workers, caching strategies, offline support, push notifications                                      |
+| `react-pro`               | `.github/skills/` | React 19+ code review — hooks, components, JSX, state/effects, performance, security, TypeScript, testing                       |
+| `recoil-pro`              | `.github/skills/` | Recoil code review — atoms/selectors, async state, snapshots, atom effects, performance, TypeScript                             |
 | `rug-routing`             | `.github/skills/` | RUG orchestrator routing table — agent roster, routing rules, handoff matrix (scaffold skill)                                   |
 | `skill-builder`           | `.github/skills/` | Builds and maintains SKILL.md skill packages (reference files, frontmatter, research methodology)                               |
 | `supabase-pro`            | `.github/skills/` | Supabase code review — RLS policies, auth, storage, migrations, TypeScript integration                                          |
 | `swiftui-pro`             | `.github/skills/` | SwiftUI code review — modern APIs, maintainability, performance                                                                 |
+| `tanstack-query-pro`      | `.github/skills/` | TanStack Query v5 review — useQuery/useMutation, caching, invalidation, optimistic updates, SSR hydration, TypeScript           |
 | `vue-pro`                 | `.github/skills/` | Vue 3 code review — Composition API, TypeScript, Pinia state management, performance                                            |
-| `workmaker-pro`            | `.github/skills/` | User story generation — epics, features, stories, job stories, INVEST criteria, story splitting, acceptance criteria              |
+| `zustand-pro`             | `.github/skills/` | Zustand v5 code review — store patterns, selectors, middleware, subscriptions, re-render optimization, TypeScript               |
+| `workmaker-pro`           | `.github/skills/` | User story generation — epics, features, stories, job stories, INVEST criteria, story splitting, acceptance criteria            |
 
 ## Skill Dependencies
 
