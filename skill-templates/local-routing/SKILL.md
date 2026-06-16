@@ -6,6 +6,31 @@ description: >-
   Add file-pattern overrides, custom triage rules, and repo-specific routing preferences.
 ---
 
+# ⚠️ STOP — Configure This File Before Continuing
+
+**If you are reading this file and you are NOT the Foundry agent, you MUST stop immediately and alert the user.**
+
+**If you ARE the Foundry agent:** you may read and edit this file freely. Once you have finished configuring the routing tables for this repo, **delete the entire stop block** (everything from the `⚠️ STOP` heading down to and including the horizontal rule that follows it) before saving.
+
+This is an unconfigured `local-routing` skill template. Routing will not function correctly until it has been customized for this repository.
+
+**Tell the user exactly this:**
+
+> This repo has a default `local-routing` skill that has not been configured yet. Without updating it, the RUG orchestrator will not route tasks to the correct specialist agents.
+>
+> Please use the **Foundry** agent to update `.github/skills/local-routing/SKILL.md` now, before continuing to use the orchestrator.
+>
+> Steps:
+>
+> 1. Open GitHub Copilot Chat and switch to the **Foundry** agent.
+> 2. Attach the `.github/agents/` folder and `.github/skills/local-routing/SKILL.md` to the chat (drag them in, or use the paperclip/attach button).
+> 3. Send exactly this message: **"update local routing for this repo"**
+> 4. Once local-routing is configured, return to RUG to continue.
+
+**Do not proceed with any routing or task delegation until this file has been updated.**
+
+---
+
 # Local Routing Overrides
 
 This file extends the canonical `rug-routing/SKILL.md` with repo-specific routing rules. The base rug-routing skill (synced from agent-repo) covers **core agents** that are always present: RUG, Foundry, Code Reviewer, Software Engineer Agent, Handoff, and Context7-Expert.
@@ -31,18 +56,18 @@ When you add **optional specialist agents** to your `.copilot-deps.json` `agents
 
 The core agent roster lives in `rug-routing`. The table below lists all **optional specialist agents** available from agent-repo. Uncomment agents you've added to your `.copilot-deps.json` `agents` array.
 
-| #    | Agent | Domain                          | When to Route              | Skills Loaded                                                                               |
-| ---- | ----- | ------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --- |
-| <!-- | 1     | **Architect**                   | System design              | API design, system diagrams, architecture decisions, service decomposition, contract design | api-design-pro                                                                         | --> |
-| <!-- | 2     | **Backend Engineer**            | Server-side                | API routes, database queries, server plugins, auth middleware, WebSocket handlers           | fastify-pro, supabase-pro, pocketbase-pro, dotnet-server, dotnet-migration, golang-api | --> |
-| <!-- | 3     | **Frontend Engineer**           | Frontend web               | UI components, state management, composables, service workers, web app manifests            | vue-pro, pwa-pro                                                                       | --> |
-| <!-- | 4     | **Full-Stack Engineer**         | Cross-layer implementation | End-to-end features spanning frontend + backend + infra in a single coherent task           | All relevant framework skills (loaded dynamically)                                     | --> |
-| <!-- | 5     | **Mobile Engineer**             | iOS / Android / Flutter    | Native mobile UI, platform APIs, app lifecycle, mobile UX                                   | swiftui-pro, android-kotlin-pro, flutter-pro, mobile-uiux-pro                          | --> |
-| <!-- | 6     | **Infrastructure Engineer**     | DevOps & tooling           | Docker, Caddy, CI/CD pipelines, monorepo tooling, deployment config, build systems          | docker-pro, caddy-pro, monitor-ci, link-workspace-packages                             | --> |
-| <!-- | 7     | **Test Writer**                 | Testing                    | Test generation for any language/framework. Writes comprehensive test suites                | Framework skills loaded dynamically per test target                                    | --> |
-| <!-- | 8     | **App Store Deployment Expert** | App distribution           | Code signing, store submission, provisioning profiles, app metadata, release workflows      | —                                                                                      | --> |
-| <!-- | 9     | **CI Monitor Subagent**         | CI monitoring              | CI pipeline status, build failures, self-healing fixes. Single tool-call per invocation     | monitor-ci                                                                             | --> |
-| <!-- | 10    | **Product Owner**               | Product & backlog          | User stories, job stories, epics, features, backlog decomposition, story splitting, story mapping, acceptance criteria, product discovery | workmaker-pro                                                               | --> |
+| #    | Agent | Domain                          | When to Route              | Skills Loaded                                                                                                                             |
+| ---- | ----- | ------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --- |
+| <!-- | 1     | **Architect**                   | System design              | API design, system diagrams, architecture decisions, service decomposition, contract design                                               | api-design-pro                                                                         | --> |
+| <!-- | 2     | **Backend Engineer**            | Server-side                | API routes, database queries, server plugins, auth middleware, WebSocket handlers                                                         | fastify-pro, supabase-pro, pocketbase-pro, dotnet-server, dotnet-migration, golang-api | --> |
+| <!-- | 3     | **Frontend Engineer**           | Frontend web               | UI components, state management, composables, service workers, web app manifests                                                          | vue-pro, pwa-pro                                                                       | --> |
+| <!-- | 4     | **Full-Stack Engineer**         | Cross-layer implementation | End-to-end features spanning frontend + backend + infra in a single coherent task                                                         | All relevant framework skills (loaded dynamically)                                     | --> |
+| <!-- | 5     | **Mobile Engineer**             | iOS / Android / Flutter    | Native mobile UI, platform APIs, app lifecycle, mobile UX                                                                                 | swiftui-pro, android-kotlin-pro, flutter-pro, mobile-uiux-pro                          | --> |
+| <!-- | 6     | **Infrastructure Engineer**     | DevOps & tooling           | Docker, Caddy, CI/CD pipelines, monorepo tooling, deployment config, build systems                                                        | docker-pro, caddy-pro, monitor-ci, link-workspace-packages                             | --> |
+| <!-- | 7     | **Test Writer**                 | Testing                    | Test generation for any language/framework. Writes comprehensive test suites                                                              | Framework skills loaded dynamically per test target                                    | --> |
+| <!-- | 8     | **App Store Deployment Expert** | App distribution           | Code signing, store submission, provisioning profiles, app metadata, release workflows                                                    | —                                                                                      | --> |
+| <!-- | 9     | **CI Monitor Subagent**         | CI monitoring              | CI pipeline status, build failures, self-healing fixes. Single tool-call per invocation                                                   | monitor-ci                                                                             | --> |
+| <!-- | 10    | **Product Owner**               | Product & backlog          | User stories, job stories, epics, features, backlog decomposition, story splitting, story mapping, acceptance criteria, product discovery | workmaker-pro                                                                          | --> |
 
 ---
 
