@@ -628,7 +628,9 @@ function printSourceRepoSummary({
   if (extraResult.synced.length === 0 && extraResult.unchanged.length === 0) {
     console.log('  (no files found)');
   } else {
-    extraResult.synced.forEach((f) => console.log(`  ✅ ${f}`));
+    extraResult.synced.forEach((f) =>
+      console.log(`  ⚠️  ${f} (updated — review for local customizations)`),
+    );
     if (extraResult.unchanged.length) {
       console.log(
         `  (${extraResult.unchanged.length} file(s) unchanged: ${extraResult.unchanged.join(', ')})`,
