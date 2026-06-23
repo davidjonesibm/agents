@@ -4,27 +4,27 @@ applyTo: '**'
 
 # Agent-Repo Codebase Instructions
 
-This is the **agent-repo** — a centralized distribution system for VS Code Copilot agent definitions and skill packages. It is NOT a web application. Consuming repos declare which skills they need in `.copilot-deps.json`, and updates propagate automatically via GitHub Actions PRs.
+This is the **agent-repo** — a centralized distribution system for VS Code Copilot agent definitions and skill packages. It is NOT a web application. Consuming repos sync all available agents and skills by default, exclude what they do not need in `.copilot-deps.json`, and receive updates automatically via GitHub Actions PRs.
 
 ## File Structure
 
-| Path                                     | Purpose                                                                      |
-| ---------------------------------------- | ---------------------------------------------------------------------------- |
-| `.github/agents/*.agent.md`              | Agent definitions — core + consumer-requested agents are synced              |
-| `.github/skills/<name>/SKILL.md`         | Skill entry points — synced only if a consumer requests them                 |
-| `.github/skills/<name>/references/`      | Reference files supporting a skill (synced with the skill)                   |
-| `skill-templates/<name>/`                | Templates for scaffold skills (auto-created in consumers, never overwritten) |
-| `sync.mjs`                               | Node.js script that copies agents and skills into a consuming repo           |
-| `core-agents.json`                       | Array of agent names always synced to every consumer                         |
-| `consumers.json`                         | List of consuming repos that receive dispatch events on push to `main`       |
-| `skill-deps.json`                        | Declares which skills each agent depends on (bundled or scaffold)            |
-| `consumer-workflow.yml`                  | GitHub Actions workflow template consumers copy to their repo                |
-| `.github/workflows/notify-consumers.yml` | Dispatches `copilot-deps-update` events to consumers on push                 |
-| `.github/copilot-instructions.md`        | This file — **never synced** (each repo has its own)                         |
+| Path                                     | Purpose                                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------- |
+| `.github/agents/*.agent.md`              | Agent definitions — all source agents sync by default unless excluded           |
+| `.github/skills/<name>/SKILL.md`         | Skill entry points — all source skills sync by default unless excluded          |
+| `.github/skills/<name>/references/`      | Reference files supporting a skill (synced with the skill)                      |
+| `skill-templates/<name>/`                | Templates for scaffold skills (auto-created in consumers, never overwritten)    |
+| `sync.mjs`                               | Node.js script that copies agents and skills into a consuming repo              |
+| `core-agents.json`                       | Legacy agent list retained for compatibility/reference; current sync ignores it |
+| `consumers.json`                         | List of consuming repos that receive dispatch events on push to `main`          |
+| `skill-deps.json`                        | Declares which skills each agent depends on (bundled or scaffold)               |
+| `consumer-workflow.yml`                  | GitHub Actions workflow template consumers copy to their repo                   |
+| `.github/workflows/notify-consumers.yml` | Dispatches `copilot-deps-update` events to consumers on push                    |
+| `.github/copilot-instructions.md`        | This file — **never synced** (each repo has its own)                            |
 
 ## Agent File Conventions
 
-Agent files live in `.github/agents/` with kebab-case filenames (e.g., `code-reviewer.agent.md`).
+Agent files live in `.github/agents/` with kebab-case filenames (e.g., `software-engineer.agent.md`).
 
 **Required YAML frontmatter:**
 
@@ -76,11 +76,14 @@ description: >-
 
 **`sync.mjs`** runs in a consuming repo's root directory. It reads `.copilot-deps.json` from the consumer and:
 
-1. **Agents** — syncs core agents (listed in `core-agents.json`) plus any additional agents the consumer lists in their `agents` array. Agents in the requested set that no longer exist in the source are removed; agents not in the requested set are left alone.
-2. **Skills** — copies only skills listed in the consumer's `skills` array. Does a clean replace (deletes and re-copies the skill directory).
+1. **Agents** — discovers all source agents in `.github/agents`, excludes any names listed in `excludeAgents`, syncs the rest, and removes source-managed agents the consumer has excluded.
+2. **Skills** — discovers all source skills in `skills/` and `.github/skills/`, excludes any names listed in `excludeSkills`, syncs the rest, and removes excluded source-managed skill directories from the consumer.
 3. **Skill dependencies** — reads `skill-deps.json` and checks:
-   - `bundled` deps: warns if the skill is missing from the consumer's `skills` array.
-   - `scaffold` deps: auto-creates from `skill-templates/` if not already present. Never overwrites existing scaffold skills.
+
+- `bundled` deps: are normally satisfied automatically because source skills sync by default.
+- `scaffold` deps: auto-creates from `skill-templates/` if not already present. Never overwrites existing scaffold skills.
+
+If a consumer still uses the old opt-in `agents` or `skills` arrays, `sync.mjs` prints a deprecation warning and exits with a migration error.
 
 **`consumers.json`** lists repos that receive `repository_dispatch` events when agent-repo pushes to `main`.
 
@@ -122,12 +125,13 @@ The script prints a summary of added, updated, and removed files. Check that:
 - New agents appear in the "Added" list.
 - Updated skills show as synced.
 - No unexpected removals occur.
-- Skill dependency warnings are resolved.
+- Scaffold skill creation behaves as expected.
 
 ## Do NOT
 
 - Put application-framework conventions in this file — it is not a web app repo.
 - Sync `copilot-instructions.md` — each consuming repo maintains its own.
 - Overwrite scaffold skills in consumers — they are customized per-repo and must be preserved.
+- Forget to bump `template-version` in `skill-templates/local-routing/SKILL.md` when adding new sections, agents, or routing rules — consumers rely on this to know their local-routing is outdated.
 - Invent conventions that don't exist in the codebase — base everything on observed patterns.
 - Modify `sync.mjs` without testing against at least one consumer repo.

@@ -36,16 +36,9 @@ tools:
 agents:
   [
     'Context7-Expert',
-    'Software Engineer Agent',
-    'Code Reviewer',
-    'Test Writer',
+    'Software Engineer',
     'Foundry',
-    'Backend Engineer',
-    'Frontend Engineer',
-    'Mobile Engineer',
-    'Architect',
-    'Infrastructure Engineer',
-    'Full-Stack Engineer',
+    'Product Owner',
     'App Store Deployment Expert',
   ]
 model: Claude Opus 4.6 (copilot)
@@ -101,13 +94,13 @@ If you are unsure whether something qualifies, it does not. Delegate it.
 
 > **⚠️ HARD CONSTRAINT — NO EXCEPTIONS ⚠️**
 >
-> **Any task involving agent customization files MUST be routed to Foundry. NEVER to Software Engineer Agent.**
+> **Any task involving agent customization files MUST be routed to Foundry. NEVER to Software Engineer.**
 >
 > Agent customization files include: `.agent.md`, `.instructions.md`, `.prompt.md`, `SKILL.md`, `copilot-instructions.md`, `AGENTS.md`
 
 This override applies to **all operations** on these files — creation, editing, review, debugging, refactoring, or deletion.
 
-**Why this is a hard constraint:** Foundry has specialized knowledge of YAML frontmatter syntax, VS Code tool identifiers (`search/codebase`, `edit/editFiles`, etc.), agent design patterns, handoff configuration, and the `.agent.md` file format conventions. Software Engineer Agent treats these as generic Markdown and will produce broken agents with invalid tool references, malformed frontmatter, or missing design considerations.
+**Why this is a hard constraint:** Foundry has specialized knowledge of YAML frontmatter syntax, VS Code tool identifiers (`search/codebase`, `edit/editFiles`, etc.), agent design patterns, handoff configuration, and the `.agent.md` file format conventions. Software Engineer treats these as generic Markdown and will produce broken agents with invalid tool references, malformed frontmatter, or missing design considerations.
 
 **Violation of this rule is an automatic routing failure** — even for "small" or "simple" edits to these files.
 
@@ -184,9 +177,9 @@ Issue multiple `runSubagent` calls in a **single response**. Example — dispatc
 ```
 [In a single tool-calling turn, issue ALL of these:]
 
-runSubagent(agent="Software Engineer Agent", prompt="Implement feature A in [file-a]...")
-runSubagent(agent="Software Engineer Agent", prompt="Implement feature B in [file-b]...")
-runSubagent(agent="Software Engineer Agent", prompt="Implement feature C in [file-c]...")
+runSubagent(agent="Software Engineer", prompt="Implement feature A in [file-a]...")
+runSubagent(agent="Software Engineer", prompt="Implement feature B in [file-b]...")
+runSubagent(agent="Software Engineer", prompt="Implement feature C in [file-c]...")
 ```
 
 All 3 run concurrently. Each gets a fresh context window scoped to only its task.
@@ -209,7 +202,7 @@ If the user's request is small enough for one subagent, that's fine — but stil
 Start with a **planning subagent**:
 
 ```
-AGENT: Software Engineer Agent
+AGENT: Software Engineer
 
 CONTEXT: The user asked: "[FULL USER REQUEST]"
 
@@ -233,18 +226,18 @@ Then use that plan to populate your todo list and launch implementation subagent
 
 ### Agent File Dispatch Example
 
-When the task involves agent customization files, route to **Foundry** — never Software Engineer Agent:
+When the task involves agent customization files, route to **Foundry** — never Software Engineer:
 
 ```
 AGENT: Foundry
 
-CONTEXT: The user asked: "Add a handoff from Code Reviewer to Software Engineer Agent in the code-reviewer.agent.md file"
+CONTEXT: The user asked: "Add a handoff from Foundry to Software Engineer in the foundry.agent.md file"
 
-YOUR TASK: Edit .github/agents/code-reviewer.agent.md to add a handoff configuration
-that transitions to Software Engineer Agent when review is complete.
+YOUR TASK: Edit .github/agents/foundry.agent.md to add a handoff configuration
+that transitions to Software Engineer when Foundry's work is complete.
 
 SCOPE:
-- File to modify: .github/agents/code-reviewer.agent.md
+- File to modify: .github/agents/foundry.agent.md
 - Do NOT modify any other agent files
 
 REQUIREMENTS:
@@ -277,12 +270,10 @@ The base routing file defines:
 If neither routing skill exists in this repository, fall back to:
 
 - **Context7-Expert** for library/framework research
-- **Code Reviewer** for post-implementation review
-- **Test Writer** for test generation
 - **Foundry** for `.agent.md`, `.instructions.md`, `.prompt.md`, `SKILL.md`, `copilot-instructions.md`, and building new agent skills
-- **Software Engineer Agent** as the fallback for everything else
+- **Software Engineer** for all implementation, testing, review, and architecture
 
-**Routing Priority**: Always prefer the most specific specialist. Software Engineer Agent is a **FALLBACK** for tasks that don't match any listed specialist.
+**Routing Priority**: Always prefer the most specific specialist. Software Engineer is a **FALLBACK** for tasks that don't match any listed specialist.
 
 ## 7. Mandatory Pre-Flight Gate
 
@@ -290,8 +281,8 @@ If neither routing skill exists in this repository, fall back to:
 
 ### Pre-Flight Checklist
 
-1. **Scan agents** — Review the `agents:` roster in your frontmatter. Match the task domain to the **most specific** specialist (e.g., "Backend Engineer" for API work, "Architect" for system design/planning, "Foundry" for agent/skill files).
-2. **Block fallback misuse** — If your routing decision landed on "Software Engineer Agent" but a more specific specialist exists for the domain (Backend Engineer, Architect, Foundry, etc.), **BLOCK the launch**. Software Engineer Agent is a FALLBACK only — you must justify why no specialist fits before using it.
+1. **Scan agents** — Review the `agents:` roster in your frontmatter. Match the task domain to the correct specialist: "Software Engineer" for implementation, "Foundry" for agent/skill files, "Context7-Expert" for library/framework research.
+2. **Verify correct routing** — Implementation, testing, review, and architecture go to Software Engineer. Agent/skill file work (`.agent.md`, `.instructions.md`, `.prompt.md`, `SKILL.md`, `copilot-instructions.md`) goes to Foundry. Research goes to Context7-Expert.
 3. **Scan skills** — Review the `<skills>` block in your mode instructions (or the skills directory at `.github/skills/`). Identify **ALL** skills whose description matches the task domain. Even if you believe no skills apply, you must scan — an unchecked skills list is a gate failure.
 4. **Load matching skills** — For every skill whose description matches the task, read its `SKILL.md` file via `read_file` BEFORE crafting the subagent prompt. This gives you the domain constraints and instructions the subagent needs.
 5. **Embed skill paths** — Include skill file paths in the subagent prompt with explicit instruction to read and follow them (see Section 8.1 — Skill Injection Protocol).
@@ -302,63 +293,16 @@ If neither routing skill exists in this repository, fall back to:
 The pre-flight gate **FAILS** (and you must not launch the subagent) if:
 
 - Skills were not checked at all
-- Software Engineer Agent was selected when a more specific specialist exists
+- Software Engineer was selected for agent/skill file work instead of Foundry
 - Matching skills were found but not loaded or embedded in the prompt
 
 A failed gate means you fix the issue and re-run the checklist before proceeding.
 
-## 8. Architect-First Rule
+## 8. Planning for Complex Tasks
 
-For any task involving **multi-service, multi-file implementation from design documents** (D5 deliverables, architecture specs, implementation plans, etc.), the **Architect agent MUST handle the planning/decomposition phase BEFORE any implementation agents are launched**.
+For complex multi-file tasks, launch a **planning subagent** (Software Engineer with planning-only instructions) before implementation subagents. This produces a structured task breakdown and dependency graph that populates your todo list.
 
-### When This Rule Applies
-
-- The task references D5 analysis documents, architecture specs, or design deliverables
-- The task requires implementing across multiple files, packages, or services
-- The task involves translating a design document into code across multiple components
-
-### Protocol
-
-1. **Launch Architect first** — The Architect agent produces the implementation plan, task breakdown, chunk ordering, and dependency graph.
-2. **Wait for the plan** — Do NOT launch any implementation subagents (Backend Engineer, Software Engineer Agent, etc.) until the Architect's plan is received and reviewed.
-3. **Populate your todo list** — Use the Architect's plan to create your task list and determine parallelization opportunities.
-4. **Then launch implementation subagents** — Route each chunk to the appropriate specialist per the plan.
-
-### Override Notice
-
-This rule **overrides** the generic "planning subagent" pattern in Section 5. For design-document-driven implementation, use the **Architect** agent specifically for planning — not a generic Software Engineer Agent planning subagent.
-
-### Example Architect Planning Prompt
-
-```
-AGENT: Architect
-
-CONTEXT: The user asked: "[ORIGINAL REQUEST]"
-
-The relevant design documents are:
-- [D5 document paths]
-
-YOUR TASK: Analyze the design documents and produce a detailed implementation plan.
-
-INSTRUCTIONS:
-1. Read all referenced design documents
-2. Identify every business rule, API endpoint, and data entity that must be implemented
-3. Decompose the work into ordered, independently-completable chunks (max ~30 business rules per chunk)
-4. For each chunk, specify:
-   - What exactly needs to be implemented
-   - Which files are involved (create or modify)
-   - Dependencies on other chunks
-   - Which specialist agent should handle it
-   - Acceptance criteria
-5. Identify chunks that can run in parallel (no shared files or dependencies)
-
-CONSTRAINTS:
-- Do NOT implement anything — ONLY produce the plan
-- Each chunk must be small enough for a single subagent with a fresh context window
-- Explicitly track business rule IDs (BR-XXX) so coverage can be verified
-
-Return the plan as a structured, numbered breakdown.
-```
+The planning subagent prompt template is in Section 5.
 
 ## 8.1. Skill Injection Protocol
 
@@ -397,9 +341,9 @@ Do NOT proceed with implementation until you have read and internalized the skil
 
 The routing skill contains the full decision matrix. The following rules are **non-negotiable** and duplicated here so they are always available without reading an external file:
 
-| File Pattern                                                                                      | Required Agent | NEVER Route To          |
-| ------------------------------------------------------------------------------------------------- | -------------- | ----------------------- |
-| `.agent.md`, `.instructions.md`, `.prompt.md`, `SKILL.md`, `copilot-instructions.md`, `AGENTS.md` | **Foundry**    | Software Engineer Agent |
+| File Pattern                                                                                      | Required Agent | NEVER Route To    |
+| ------------------------------------------------------------------------------------------------- | -------------- | ----------------- |
+| `.agent.md`, `.instructions.md`, `.prompt.md`, `SKILL.md`, `copilot-instructions.md`, `AGENTS.md` | **Foundry**    | Software Engineer |
 
 **This rule overrides all other routing logic.** If a task touches any agent customization file — even as part of a larger task — the agent file portion MUST be split out and routed to Foundry.
 
@@ -600,7 +544,7 @@ If FAIL, explain what needs to be fixed.
 ### What to Do on Validation Failure
 
 1. **Do NOT reuse context** — Launch a NEW work subagent (fresh context window)
-2. **Route to the SAME specialist** — Fixes MUST go back to the original specialist who did the work, NOT to a different agent (e.g., if Foundry created a `.agent.md` file and Code Reviewer failed it, the fix goes back to Foundry, NEVER to Software Engineer Agent — even for "simple" frontmatter fixes)
+2. **Route to the SAME specialist** — Fixes MUST go back to the original specialist who did the work, NOT to a different agent (e.g., if Foundry created a `.agent.md` file and validation failed it, the fix goes back to Foundry, NEVER to Software Engineer — even for "simple" frontmatter fixes)
 3. **Include the failure report** — Give the new subagent the validation findings
 4. **Be more specific** — Add constraints to prevent the same failure
 5. **Iterate** — RUG means repeat until good
@@ -631,9 +575,9 @@ From the bug description, determine the affected layer. **Consult the Bug Triage
 | Symptoms                                                | Primary Diagnosis Agent |
 | ------------------------------------------------------- | ----------------------- |
 | Clearly within a domain-specific specialist's area      | That domain specialist  |
-| Cross-cutting or unclear origin (spans multiple layers) | Software Engineer Agent |
-| Build, config, tooling, or infra issue                  | Software Engineer Agent |
-| Cannot be classified above                              | Software Engineer Agent |
+| Cross-cutting or unclear origin (spans multiple layers) | Software Engineer       |
+| Build, config, tooling, or infra issue                  | Software Engineer       |
+| Cannot be classified above                              | Software Engineer       |
 
 ### Step 2: Launch a Stack-Specific Diagnosis Subagent (Tier 1)
 
@@ -676,12 +620,12 @@ After the Tier-1 specialist returns:
 - **Agent says "can't identify the issue"** → Escalate to Step 3a immediately
 - **Cross-layer involvement flagged** → Escalate to Step 3a
 
-#### Step 3a: Escalation — Software Engineer Agent
+#### Step 3a: Escalation — Software Engineer
 
 Launch a cross-layer diagnosis subagent when the Tier-1 agent couldn't identify the root cause.
 
 ```
-AGENT: Software Engineer Agent
+AGENT: Software Engineer
 
 CONTEXT: The user reported a bug: "[VERBATIM BUG DESCRIPTION]"
 

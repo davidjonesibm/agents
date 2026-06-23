@@ -34,13 +34,9 @@ handoffs:
     agent: Context7-Expert
     prompt: Research the following app deployment/store submission question using up-to-date documentation.
     send: false
-  - label: Mobile Native Help
-    agent: Mobile Engineer
-    prompt: Help with platform-specific build configuration, code signing, Xcode project settings, Gradle configuration, or Flutter release build setup.
-    send: false
-  - label: React Native Build Help
-    agent: Mobile Engineer
-    prompt: Help with React Native/Expo-specific build and EAS configuration.
+  - label: Mobile/Build Help
+    agent: Software Engineer
+    prompt: Help with platform-specific build configuration, code signing, project settings, or release build setup.
     send: false
 ---
 

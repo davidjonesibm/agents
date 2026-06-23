@@ -13,16 +13,6 @@
       }
     ]
   },
-  "mobile-engineer": {
-    "skills": [
-      {
-        "name": "swiftui-pro",
-        "type": "bundled",
-        "location": "skills/swiftui-pro",
-        "description": "SwiftUI views, navigation, data flow, accessibility, performance, and Swift references"
-      }
-    ]
-  },
   "product-owner": {
     "skills": [
       {

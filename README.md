@@ -1,6 +1,6 @@
 # Copilot Deps Sync
 
-Centralized distribution system for VS Code Copilot agent definitions and skills. The agent-repo is the single source of truth — consuming repos declare which skills they need, and updates propagate automatically via GitHub Actions PRs.
+Centralized distribution system for VS Code Copilot agent definitions and skills. The agent-repo is the single source of truth — consuming repos get everything by default and exclude what they do not need, with updates propagating automatically via GitHub Actions PRs.
 
 ## Architecture
 
@@ -22,8 +22,8 @@ Centralized distribution system for VS Code Copilot agent definitions and skills
 
 **What gets synced:**
 
-- **Agents** — Core agents (listed in `core-agents.json`) are always synced. Additional agents are synced only if listed in the consumer's `agents` array in `.copilot-deps.json`.
-- **Skills** — Only those listed in the consumer's `.copilot-deps.json`
+- **Agents** — All source agents sync by default, except names listed in `excludeAgents`
+- **Skills** — Only skills listed in the `skills` array sync; the example file lists all available skills so you can trim to what you need
 - **Scaffold skills** — Auto-created from templates when required by an agent (never overwritten once they exist)
 - **Instructions** — `.github/copilot-instructions.md` is **never** synced (repo-specific)
 
@@ -47,17 +47,17 @@ Centralized distribution system for VS Code Copilot agent definitions and skills
 {
   "source": "your-org/agent-repo",
   "ref": "main",
-  "agents": ["architect", "backend-engineer", "frontend-engineer"],
-  "skills": ["vue-pro", "fastify-pro", "monitor-ci"]
+  "excludeAgents": ["product-owner"],
+  "skills": ["agent-builder", "docker-pro", "fastify-pro", "vue-pro"]
 }
 ```
 
-| Field    | Required | Description                                                       |
-| -------- | -------- | ----------------------------------------------------------------- |
-| `source` | Yes      | GitHub `owner/repo` of the agent-repo                             |
-| `ref`    | No       | Branch/tag to sync from (default: `main`)                         |
-| `agents` | No       | Array of additional agent names to sync (core agents always sync) |
-| `skills` | No       | Array of skill names to sync (default: `[]`; see table below)     |
+| Field           | Required | Description                                                    |
+| --------------- | -------- | -------------------------------------------------------------- |
+| `source`        | Yes      | GitHub `owner/repo` of the agent-repo                          |
+| `ref`           | No       | Branch/tag to sync from (default: `main`)                      |
+| `excludeAgents` | No       | Agent names to skip — all others sync by default               |
+| `skills`        | No       | Skills to sync — only listed skills are copied (default: none) |
 
 ### 2. Copy `sync.sh` into the repo root
 
@@ -82,31 +82,24 @@ For automatic sync-on-push, copy `consumer-workflow.yml` to `.github/workflows/s
 
 ## Available Agents
 
-### Core (always synced)
+All agents sync by default unless excluded in `.copilot-deps.json`.
 
-| Agent                        | Description                                                                                  |
-| ---------------------------- | -------------------------------------------------------------------------------------------- |
-| `rug-orchestrator`           | Orchestration agent that decomposes requests, delegates to subagents, and validates outcomes |
-| `foundry`                    | Design, create, and maintain VS Code agent and skill infrastructure                          |
-| `code-reviewer`              | Post-implementation code reviewer for correctness, security, performance, and style          |
-| `software-engineer-agent-v1` | Expert-level autonomous software engineering agent                                           |
-| `handoff`                    | Generates context handoff documents to resume work in a new chat                             |
-| `context7`                   | Expert in latest library versions and best practices using up-to-date documentation          |
+### Core Agents
 
-### Optional (opt-in via `agents` array)
+| Agent               | Description                                                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `context7`          | Expert in latest library versions and best practices using up-to-date documentation                                           |
+| `foundry`           | Design, create, and maintain VS Code agent and skill infrastructure                                                           |
+| `rug-orchestrator`  | Orchestration agent that decomposes requests, delegates to subagents, and validates outcomes                                  |
+| `software-engineer` | Unified full-stack engineer covering implementation, testing, code review, and architecture — dynamically loads domain skills |
+
+### Optional Agents
 
 | Agent                         | Description                                                                                            |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `app-store-deployment-expert` | Mobile app deployment — App Store Connect, Google Play Console, code signing, CI/CD                    |
-| `architect`                   | Designs scalable systems, reviews architecture, and produces actionable specs                          |
-| `backend-engineer`            | Server-side specialist for APIs, databases, auth — dynamically loads framework skills                  |
 | `ci-monitor-subagent`         | CI helper that fetches CI status, retrieves fix details, and updates self-healing fixes                |
-| `frontend-engineer`           | Builds and optimizes frontend web apps with framework-aware skill loading                              |
-| `full-stack-engineer`         | Cross-layer engineer implementing features end-to-end across all layers                                |
-| `infrastructure-engineer`     | Containerization, reverse proxies, CI/CD pipelines, monorepo tooling, and deployment                   |
-| `mobile-engineer`             | Native and cross-platform mobile engineer — iOS (SwiftUI), Android (Kotlin), Flutter                   |
 | `product-owner`               | Product ownership specialist — user stories, backlog decomposition, story mapping, acceptance criteria |
-| `test-writer`                 | Test generation specialist that dynamically loads framework skills for comprehensive suites            |
 
 ## Available Skills
 
@@ -147,10 +140,53 @@ Some agents require specific skills to function. Dependencies are declared in `s
 
 Two dependency types:
 
-- **Bundled** — A skill from the agent-repo that the consumer should add to their `skills` array. The sync script warns if it's missing.
+- **Bundled** — A skill from the agent-repo that syncs automatically by default. In the exclude-based model these dependencies are normally satisfied without extra manifest entries.
 - **Scaffold** — A skill auto-created from a template in `skill-templates/`. These define repo-specific configuration (e.g., routing rules) and are **never overwritten** once they exist — edit them freely.
 
 Currently the only scaffold skill is `rug-routing`, required by the `rug-orchestrator` agent. It defines the specialist agent roster and routing rules for your repo.
+
+## Migrating from the Opt-In Format
+
+If your `.copilot-deps.json` uses the old `agents` array, `sync.mjs` will refuse to run and print a migration error. The `skills` array is unchanged — only the agent model has flipped.
+
+### 1. Identify what you currently have
+
+```json
+{
+  "source": "your-org/agent-repo",
+  "ref": "main",
+  "agents": ["architect", "backend-engineer"],
+  "skills": ["vue-pro", "fastify-pro", "monitor-ci"]
+}
+```
+
+### 2. Replace `agents` with `excludeAgents`
+
+Agents now sync by default. Replace the opt-in `agents` array with an opt-out `excludeAgents` array listing the agents you do _not_ want. The `skills` array stays exactly as-is.
+
+```json
+{
+  "source": "your-org/agent-repo",
+  "ref": "main",
+  "excludeAgents": [
+    "app-store-deployment-expert",
+    "ci-monitor-subagent",
+    "mobile-engineer",
+    "product-owner"
+  ],
+  "skills": ["vue-pro", "fastify-pro", "monitor-ci"]
+}
+```
+
+> **Tip:** Copy `.copilot-deps.example.json` from the agent-repo as a starting point — it lists all available skills so you can delete the ones you don’t need.
+
+### 3. Run sync
+
+```sh
+./sync.sh
+```
+
+Review the diff in the resulting PR and add any unwanted agents to `excludeAgents` before merging.
 
 ## How Updates Work
 
@@ -158,10 +194,63 @@ Currently the only scaffold skill is `rug-routing`, required by the `rug-orchest
 2. The workflow reads `consumers.json` and sends a `repository_dispatch` event (`copilot-deps-update`) to each listed repo.
 3. Each consumer's **Sync copilot deps** workflow:
    - Clones the agent-repo at the configured ref
-   - Runs `sync.mjs` to copy agents and requested skills
-   - Opens (or updates) a PR on the `sync/copilot-deps` branch
+
+- Runs `sync.mjs` to copy all source agents and skills except those explicitly excluded
+- Opens (or updates) a PR on the `sync/copilot-deps` branch
 
 Merging the PR is manual — review the diff before accepting.
+
+## Forked Source Repos (Client-Specific Agent Repos)
+
+Some teams need their own private agent repo — a fork that sources from this repo but adds client-specific agents, skills, and routing rules. Use `"type": "source"` to enable full-mirror mode.
+
+### How it works
+
+In source-repo mode `sync.mjs` performs a complete mirror — no filtering, no opt-in lists:
+
+| What gets synced             | Notes                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| All agents                   | Every `.agent.md` file, no `excludeAgents` filtering                       |
+| All skills                   | Both `.github/skills/` and `skills/` locations                             |
+| `skill-templates/`           | Full overwrite — enables the fork to scaffold skills for its own consumers |
+| `skill-deps.json`            | So the fork can declare its own dependency graph                           |
+| `core-agents.json`           | Kept in sync for reference / compatibility                                 |
+| `consumer-workflow.yml`      | The fork can offer this template to its own consumers                      |
+| `sync.mjs` + `sync.sh`       | The fork ships the same sync tooling to its consumers                      |
+| `.copilot-deps.example.json` | Updated example for the fork's consumers to copy                           |
+
+`excludeAgents` and `skills` are ignored in source-repo mode and do not need to be present.
+
+### Setup
+
+1. Create `.copilot-deps.json` in the fork's root:
+
+```json
+{
+  "type": "source",
+  "source": "davidjonesibm/agents",
+  "ref": "main"
+}
+```
+
+2. Copy `sync.sh` into the fork, make it executable, and commit:
+
+```sh
+chmod +x sync.sh
+git add sync.sh .copilot-deps.json && git commit -m "chore: configure as forked source repo"
+```
+
+3. Run initial sync:
+
+```sh
+./sync.sh
+```
+
+4. After syncing, add your own agents, skills, and routing rules on top. Customizations are safe — `sync.mjs` never removes files that don't exist in the upstream source.
+
+5. Register your fork's consumers in its own `consumers.json` and set up `COPILOT_SYNC_PAT` so it can dispatch sync events downstream.
+
+---
 
 ## Adding a New Consuming Repo
 

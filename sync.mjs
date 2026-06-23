@@ -226,9 +226,8 @@ function snapshotsEqual(a, b) {
 }
 
 function syncSkills(sourceRoot, targetRoot, skillNames) {
-  const results = { synced: [], unchanged: [], removed: [], notFound: [] };
+  const results = { synced: [], unchanged: [], notFound: [] };
   const requestedSkillSet = new Set(skillNames);
-  const discoveredSkillNames = new Set(discoverSkillNames(sourceRoot));
 
   for (const name of skillNames) {
     const found = findSkillSource(sourceRoot, name);
@@ -257,18 +256,6 @@ function syncSkills(sourceRoot, targetRoot, skillNames) {
       results.unchanged.push({ name, dest });
     } else {
       results.synced.push({ name, dest });
-    }
-  }
-
-  for (const name of discoveredSkillNames) {
-    if (requestedSkillSet.has(name)) continue;
-
-    for (const loc of SKILL_LOCATIONS) {
-      const tgtDir = join(targetRoot, loc.tgtBase, name);
-      if (!existsSync(tgtDir) || !statSync(tgtDir).isDirectory()) continue;
-
-      rmSync(tgtDir, { recursive: true, force: true });
-      results.removed.push({ name, dest: join(loc.tgtBase, name) });
     }
   }
 
@@ -333,6 +320,93 @@ function checkSkillDeps(
   }
 
   return { warnings, scaffolded, skipped, templateMissing };
+}
+
+// ---------------------------------------------------------------------------
+// Local Routing Version Check
+// ---------------------------------------------------------------------------
+
+/** Extract the template-version: field from a YAML frontmatter body string. */
+function extractTemplateVersion(frontmatterBody) {
+  const match = frontmatterBody.match(
+    /^template-version:\s*['"]?(.*?)['"]?\s*$/m,
+  );
+  return match ? match[1].trim() : null;
+}
+
+function checkLocalRoutingVersion(sourceRoot, targetRoot) {
+  const templatePath = join(
+    sourceRoot,
+    'skill-templates',
+    'local-routing',
+    'SKILL.md',
+  );
+  const consumerPath = join(
+    targetRoot,
+    '.github',
+    'skills',
+    'local-routing',
+    'SKILL.md',
+  );
+
+  if (!existsSync(templatePath) || !existsSync(consumerPath)) return;
+
+  const templateContent = readFileSync(templatePath, 'utf-8');
+  const consumerContent = readFileSync(consumerPath, 'utf-8');
+
+  const templateFm = templateContent.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  const consumerFm = consumerContent.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+
+  const templateVersion = templateFm
+    ? extractTemplateVersion(templateFm[1])
+    : null;
+  const consumerVersion = consumerFm
+    ? extractTemplateVersion(consumerFm[1])
+    : null;
+
+  if (!templateVersion) return; // Template has no version — nothing to check
+
+  if (consumerVersion === templateVersion) return; // Up to date
+
+  // Copy the new template alongside the consumer's existing file so an agent can merge them
+  const stagingPath = join(
+    targetRoot,
+    '.github',
+    'skills',
+    'local-routing',
+    'SKILL.template.md',
+  );
+  writeFileSync(stagingPath, templateContent, 'utf-8');
+
+  const bar = '═'.repeat(64);
+  const pad = (s) => `║  ${s.padEnd(60)}  ║`;
+  console.log(`\n╔${bar}╗`);
+  console.log(pad('⚠️  LOCAL ROUTING TEMPLATE HAS CHANGED'));
+  console.log(`║${'─'.repeat(64)}║`);
+  if (consumerVersion) {
+    console.log(
+      pad(`Your local-routing is based on template v${consumerVersion}.`),
+    );
+    console.log(pad(`The source template is now v${templateVersion}.`));
+  } else {
+    console.log(pad('Your local-routing has no template-version.'));
+    console.log(pad(`The source template is now v${templateVersion}.`));
+  }
+  console.log(`║${' '.repeat(64)}║`);
+  console.log(pad('The updated template has been saved alongside your file:'));
+  console.log(pad('  .github/skills/local-routing/SKILL.template.md'));
+  console.log(`║${' '.repeat(64)}║`);
+  console.log(pad('To merge, open Copilot Chat and use the Foundry agent:'));
+  console.log(
+    pad('  "Merge SKILL.template.md into SKILL.md for local-routing,'),
+  );
+  console.log(
+    pad('   preserving my customizations, then delete the template file."'),
+  );
+  console.log(`║${' '.repeat(64)}║`);
+  console.log(pad('After merging, add template-version to your frontmatter:'));
+  console.log(pad(`  template-version: "${templateVersion}"`));
+  console.log(`╚${bar}╝\n`);
 }
 
 // ---------------------------------------------------------------------------
@@ -414,6 +488,158 @@ function updateRugAgentRoster(targetRoot) {
 }
 
 // ---------------------------------------------------------------------------
+// Source-Repo Sync (full mirror for forked agent repos)
+// ---------------------------------------------------------------------------
+
+/**
+ * Files to mirror verbatim from the source repo root into the consuming repo
+ * root when operating in source-repo mode.
+ */
+const SOURCE_REPO_EXTRA_FILES = [
+  'skill-deps.json',
+  'core-agents.json',
+  'consumer-workflow.yml',
+  'sync.mjs',
+  'sync.sh',
+  '.copilot-deps.example.json',
+];
+
+/**
+ * Full-mirror sync for repos that are themselves agent source repos (e.g. a
+ * client fork of this repo). Syncs every agent, every skill, all
+ * skill-templates, and key infrastructure files — no filtering, full overwrite.
+ */
+function syncSourceRepo(sourceRoot, targetRoot) {
+  // 1. Sync ALL agents — no excludeAgents filtering
+  const allAgentNames = new Set(
+    listFiles(join(sourceRoot, '.github', 'agents'), (f) =>
+      f.endsWith('.agent.md'),
+    ).map((f) => f.replace(/\.agent\.md$/, '')),
+  );
+  const agentResult = syncAgents(sourceRoot, targetRoot, allAgentNames);
+
+  // 2. Sync ALL skills from all known locations
+  const allSkillNames = discoverSkillNames(sourceRoot);
+  const skillResult = syncSkills(sourceRoot, targetRoot, allSkillNames);
+
+  // 3. Mirror skill-templates/ in full (always overwrite)
+  const templateResult = { synced: [], unchanged: [] };
+  const templateSrc = join(sourceRoot, 'skill-templates');
+  if (existsSync(templateSrc)) {
+    const templateDst = join(targetRoot, 'skill-templates');
+    const before = snapshotDir(templateDst);
+    if (existsSync(templateDst)) {
+      rmSync(templateDst, { recursive: true, force: true });
+    }
+    mkdirSync(templateDst, { recursive: true });
+    cpSync(templateSrc, templateDst, { recursive: true });
+    const after = snapshotDir(templateDst);
+    if (before.size > 0 && snapshotsEqual(before, after)) {
+      templateResult.unchanged.push('skill-templates/');
+    } else {
+      templateResult.synced.push('skill-templates/');
+    }
+  }
+
+  // 4. Mirror individual infrastructure files
+  const extraResult = { synced: [], unchanged: [] };
+  for (const file of SOURCE_REPO_EXTRA_FILES) {
+    const srcPath = join(sourceRoot, file);
+    if (!existsSync(srcPath)) continue;
+    const tgtPath = join(targetRoot, file);
+    const srcContent = readFileSync(srcPath);
+    const tgtContent = existsSync(tgtPath) ? readFileSync(tgtPath) : null;
+    if (tgtContent && srcContent.equals(tgtContent)) {
+      extraResult.unchanged.push(file);
+    } else {
+      writeFileSync(tgtPath, srcContent);
+      extraResult.synced.push(file);
+    }
+  }
+
+  return { agentResult, skillResult, templateResult, extraResult };
+}
+
+function printSourceRepoSummary({
+  agentResult,
+  skillResult,
+  templateResult,
+  extraResult,
+}) {
+  console.log('\n─── Source-Repo Sync Summary ───────────────\n');
+
+  // Agents
+  console.log('Agents (.github/agents/):');
+  if (agentResult.added.length) {
+    console.log(`  Added (${agentResult.added.length}):`);
+    agentResult.added.forEach((f) => console.log(`    ✅ ${f}`));
+  }
+  if (agentResult.updated.length) {
+    console.log(`  Updated (${agentResult.updated.length}):`);
+    agentResult.updated.forEach((f) => console.log(`    🔄 ${f}`));
+  }
+  if (agentResult.removed.length) {
+    console.log(`  Removed (${agentResult.removed.length}):`);
+    agentResult.removed.forEach((f) => console.log(`    ❌ ${f}`));
+  }
+  if (
+    agentResult.added.length === 0 &&
+    agentResult.updated.length === 0 &&
+    agentResult.removed.length === 0
+  ) {
+    console.log('  (no changes)');
+  }
+
+  // Skills
+  console.log('\nSkills:');
+  if (skillResult.synced.length) {
+    skillResult.synced.forEach((s) =>
+      console.log(`  ✅ ${s.name} → ${s.dest}`),
+    );
+  }
+  if (skillResult.notFound.length) {
+    skillResult.notFound.forEach((s) =>
+      console.log(`  ⚠️ ${s} — not found in source repo`),
+    );
+  }
+  if (skillResult.synced.length === 0 && skillResult.notFound.length === 0) {
+    console.log('  (no changes)');
+  }
+
+  // Skill Templates
+  console.log('\nSkill Templates (skill-templates/):');
+  if (templateResult.synced.length) {
+    templateResult.synced.forEach((name) => console.log(`  ✅ ${name}`));
+  }
+  if (templateResult.unchanged.length) {
+    templateResult.unchanged.forEach((name) =>
+      console.log(`  – ${name} (unchanged)`),
+    );
+  }
+  if (
+    templateResult.synced.length === 0 &&
+    templateResult.unchanged.length === 0
+  ) {
+    console.log('  (none found in source)');
+  }
+
+  // Infrastructure Files
+  console.log('\nInfrastructure Files:');
+  if (extraResult.synced.length === 0 && extraResult.unchanged.length === 0) {
+    console.log('  (no files found)');
+  } else {
+    extraResult.synced.forEach((f) => console.log(`  ✅ ${f}`));
+    if (extraResult.unchanged.length) {
+      console.log(
+        `  (${extraResult.unchanged.length} file(s) unchanged: ${extraResult.unchanged.join(', ')})`,
+      );
+    }
+  }
+
+  console.log('\n────────────────────────────────────────────\n');
+}
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 
@@ -449,21 +675,12 @@ function printSummary(agentResult, skillResult, depResult) {
       console.log(`  ✅ ${s.name} → ${s.dest}`),
     );
   }
-  if (skillResult.removed.length) {
-    skillResult.removed.forEach((s) =>
-      console.log(`  ❌ ${s.name} → removed from ${s.dest}`),
-    );
-  }
   if (skillResult.notFound.length) {
     skillResult.notFound.forEach((s) =>
       console.log(`  ⚠️ ${s} — not found in source repo`),
     );
   }
-  if (
-    skillResult.synced.length === 0 &&
-    skillResult.removed.length === 0 &&
-    skillResult.notFound.length === 0
-  ) {
+  if (skillResult.synced.length === 0 && skillResult.notFound.length === 0) {
     console.log('  (no changes)');
   }
 
@@ -517,35 +734,53 @@ function main() {
   console.log('Reading .copilot-deps.json …');
   const manifest = readManifest(cwd);
 
-  if (Array.isArray(manifest.agents) || Array.isArray(manifest.skills)) {
+  if (Array.isArray(manifest.agents)) {
     console.error('\n⚠️  Deprecated .copilot-deps.json format detected.');
     console.error(
-      '   Use "excludeAgents" and "excludeSkills" instead of "agents" and "skills".',
+      '   Remove the "agents" array. Agents now sync by default — use "excludeAgents" to opt out.',
     );
     console.error('   New format:');
     console.error('   {');
     console.error('     "source": "owner/repo",');
     console.error('     "ref": "main",');
     console.error('     "excludeAgents": [],');
-    console.error('     "excludeSkills": []');
+    console.error('     "skills": ["skill-name", ...]');
     console.error('   }');
-    die(
-      'Migrate .copilot-deps.json to the exclude-based format and rerun sync.',
-    );
+    die('Migrate .copilot-deps.json and rerun sync.');
   }
 
   const {
+    type,
     source,
     ref = 'main',
     excludeAgents = [],
-    excludeSkills = [],
+    skills = [],
   } = manifest;
   if (!source) die('"source" field is required in .copilot-deps.json');
+
+  // --- Source-repo mode: full mirror for forked agent repos ---
+  if (type === 'source') {
+    console.log(`Mode: source-repo — cloning ${source} (ref: ${ref}) …`);
+    const tmp = cloneSource(source, ref);
+    try {
+      console.log(
+        'Syncing all agents, skills, templates, and infrastructure …',
+      );
+      const results = syncSourceRepo(tmp, cwd);
+      console.log('Updating RUG agent roster …');
+      updateRugAgentRoster(cwd);
+      printSourceRepoSummary(results);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+    return;
+  }
+
   if (!Array.isArray(excludeAgents)) {
     die('"excludeAgents" must be an array in .copilot-deps.json');
   }
-  if (!Array.isArray(excludeSkills)) {
-    die('"excludeSkills" must be an array in .copilot-deps.json');
+  if (!Array.isArray(skills)) {
+    die('"skills" must be an array in .copilot-deps.json');
   }
 
   console.log(`Cloning ${source} (ref: ${ref}) …`);
@@ -553,7 +788,6 @@ function main() {
 
   try {
     const excludedAgentSet = new Set(excludeAgents);
-    const excludedSkillSet = new Set(excludeSkills);
 
     const allAgentNames = listFiles(join(tmp, '.github', 'agents'), (f) =>
       f.endsWith('.agent.md'),
@@ -564,10 +798,7 @@ function main() {
       allAgentNames.filter((name) => !excludedAgentSet.has(name)),
     );
 
-    const allSkillNames = discoverSkillNames(tmp);
-    const requestedSkills = allSkillNames.filter(
-      (name) => !excludedSkillSet.has(name),
-    );
+    const requestedSkills = skills;
 
     const existingAgentNames = new Set(
       listFiles(join(cwd, '.github', 'agents'), (f) =>
@@ -593,12 +824,10 @@ function main() {
     const skillResult = syncSkills(tmp, cwd, requestedSkills);
 
     console.log('Checking skill dependencies …');
-    const depResult = checkSkillDeps(
-      tmp,
-      cwd,
-      requestedSkills,
-      requestedAgents,
-    );
+    const depResult = checkSkillDeps(tmp, cwd, skills, requestedAgents);
+
+    console.log('Checking local-routing template version …');
+    checkLocalRoutingVersion(tmp, cwd);
 
     console.log('Updating RUG agent roster …');
     updateRugAgentRoster(cwd);

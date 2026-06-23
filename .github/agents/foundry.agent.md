@@ -18,8 +18,8 @@ tools:
   ]
 agents: ['Context7-Expert']
 handoffs:
-  - label: Review with Code Reviewer
-    agent: Code Reviewer
+  - label: Review Agent/Skill
+    agent: Software Engineer
     prompt: Review the agent/skill I just created for completeness, accuracy, and format adherence.
     send: false
 model: Claude Sonnet 4.6 (copilot)

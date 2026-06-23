@@ -26,16 +26,8 @@ mcp-servers:
     headers: { 'CONTEXT7_API_KEY': '${{ secrets.COPILOT_MCP_CONTEXT7 }}' }
     tools: ['get-library-docs', 'resolve-library-id']
 handoffs:
-  - label: Implement with Vue Expert
-    agent: Frontend Engineer
-    prompt: Implement the solution using the best practices and documentation outlined above.
-    send: false
-  - label: Implement Backend
-    agent: Backend Engineer
-    prompt: Implement the backend solution using the best practices and documentation outlined above.
-    send: false
-  - label: Implement General
-    agent: Software Engineer Agent
+  - label: Implement Solution
+    agent: Software Engineer
     prompt: Implement the solution using the best practices and documentation outlined above.
     send: false
 ---

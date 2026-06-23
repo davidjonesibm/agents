@@ -9,7 +9,7 @@ description: >-
 
 ## Override System
 
-This file covers **core agents only** — the agents guaranteed to exist in every consumer repo. Optional specialist agents (Backend Engineer, Frontend Engineer, Mobile Engineer, Architect, Infrastructure Engineer, Full-Stack Engineer, Test Writer, App Store Deployment Expert, CI Monitor Subagent) are **not** included here. Consumers who opt into optional agents should add their routing rules to the **local-routing** skill.
+This file covers the **4 core agents** guaranteed to exist in every consumer repo. Optional agents (Product Owner, App Store Deployment Expert, CI Monitor Subagent) are **not** included here. Consumers who opt into optional agents should add their routing rules to the **local-routing** skill.
 
 This file contains the **canonical agent roster and default routing rules** synced from agent-repo. It is the base layer.
 
@@ -31,24 +31,20 @@ This skill is read by the **RUG orchestrator** at the start of every session. It
 2. How to route tasks, file patterns, and bug reports to the correct agent
 3. Which handoffs are available between agents
 
-**Override rule**: Any agent listed here takes precedence over the generic "Software Engineer Agent" fallback. Consumers who install optional specialist agents should add them to local-routing to extend this table.
-
 ---
 
 ## 1. Agent Roster
 
-These 6 agents are always present in every consumer repo.
+These 4 agents are always present in every consumer repo.
 
-| #   | Agent                       | Domain                       | When to Route                                                                                                                                                                                              | Skills Loaded                                         |
-| --- | --------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| 1   | **Context7-Expert**         | Research                     | Library/framework documentation lookup via Context7 MCP. Researching APIs, checking latest syntax, finding best practices. Read-only.                                                                      | — (MCP-based)                                         |
-| 2   | **Code Reviewer**           | Review                       | Post-implementation code review. Correctness, security, performance, style. Launch AFTER implementation.                                                                                                   | Framework skills loaded dynamically per review target |
-| 3   | **Software Engineer Agent** | General (fallback)           | Default implementation agent. Use for all production code when no domain specialist is available, or for cross-cutting concerns that don't fit a specialist.                                               | —                                                     |
-| 4   | **Foundry**                 | Agent & skill infrastructure | ALL work on agent files (`.agent.md`, `.instructions.md`, `.prompt.md`, `copilot-instructions.md`, `AGENTS.md`) AND skill packages (`SKILL.md` + `references/`). Creation, editing, rebuilding, debugging. | agent-builder, skill-builder (loaded dynamically)     |
-| 5   | **RUG**                     | Orchestration                | The orchestrator itself. Pure delegation — never does implementation work.                                                                                                                                 | rug-routing (this file)                               |
-| 6   | **Handoff**                 | Session continuity           | Generates context-carrying handoff documents for session resumption.                                                                                                                                       | —                                                     |
+| #   | Agent                 | Domain                       | When to Route                                                                                                                                                                                              | Skills Loaded                                     |
+| --- | --------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 1   | **RUG**               | Orchestration                | The orchestrator itself. Pure delegation — never does implementation work.                                                                                                                                 | rug-routing (this file)                           |
+| 2   | **Foundry**           | Agent & skill infrastructure | ALL work on agent files (`.agent.md`, `.instructions.md`, `.prompt.md`, `copilot-instructions.md`, `AGENTS.md`) AND skill packages (`SKILL.md` + `references/`). Creation, editing, rebuilding, debugging. | agent-builder, skill-builder (loaded dynamically) |
+| 3   | **Software Engineer** | Implementation               | All implementation, testing, code review, architecture design, and bug diagnosis. Loads domain skills dynamically.                                                                                         | Framework skills loaded dynamically per task      |
+| 4   | **Context7-Expert**   | Research                     | Library/framework documentation lookup via Context7 MCP. Researching APIs, checking latest syntax, finding best practices. Read-only — always run BEFORE implementation when APIs are unfamiliar.          | — (MCP-based)                                     |
 
-> **Optional agents**: Consumers can install additional specialist agents (e.g., Backend Engineer, Frontend Engineer, Mobile Engineer, Architect, Infrastructure Engineer, Full-Stack Engineer, Test Writer) via `.copilot-deps.json`. When installed, add their routing rules to the local-routing skill.
+> **Optional agents**: Consumers can install Product Owner, App Store Deployment Expert, and CI Monitor Subagent. When installed, add their routing rules to `local-routing/SKILL.md`.
 
 ---
 
@@ -56,43 +52,39 @@ These 6 agents are always present in every consumer repo.
 
 When a task references specific files, use this table to select the agent.
 
-| File Pattern / Path                                                                                  | Route To                               |
-| ---------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `*.agent.md`, `*.instructions.md`, `*.prompt.md`, `SKILL.md`, `copilot-instructions.md`, `AGENTS.md` | **Foundry**                            |
-| `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**`                                                      | **Software Engineer Agent** (fallback) |
-| Everything else (no pattern match)                                                                   | **Software Engineer Agent** (fallback) |
+| File Pattern / Path                                                                                  | Route To              |
+| ---------------------------------------------------------------------------------------------------- | --------------------- |
+| `*.agent.md`, `*.instructions.md`, `*.prompt.md`, `SKILL.md`, `copilot-instructions.md`, `AGENTS.md` | **Foundry**           |
+| Everything else (no pattern match)                                                                   | **Software Engineer** |
 
 **Precedence**: Foundry overrides ALL other agents for agent/skill files (see Section 6).
 
-> **Extending with optional agents**: Consumers who add optional specialist agents should extend this table in `local-routing/SKILL.md` with domain-specific file patterns (e.g., `apps/backend/**` → Backend Engineer, `**/*.swift` → Mobile Engineer).
+> **Local routing**: Consumers only need `local-routing/SKILL.md` for optional agents (Product Owner, App Store Deployment Expert, CI Monitor) or truly repo-specific overrides (e.g., routing a specific path to a particular workflow). No specialist engineer routing is needed — Software Engineer handles all implementation domains.
 
 ---
 
 ## 3. Task Phase Routing
 
-| Phase                                                          | Route To                               | Notes                                                                              |
-| -------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------- |
-| **Research** — library docs, API lookup, best practices        | **Context7-Expert**                    | Always route here BEFORE implementation when library/framework knowledge is needed |
-| **Implementation** — writing production code                   | **Software Engineer Agent** (fallback) | Default for all implementation when no domain specialist is available              |
-| **Review** — post-implementation quality check                 | **Code Reviewer**                      | Launch AFTER implementation to validate correctness, security, performance         |
-| **Agent/skill infrastructure** — `.agent.md`, `SKILL.md`, etc. | **Foundry**                            | Overrides all other routing for these file types                                   |
-| **Session handoff** — resumption context for next session      | **Handoff**                            | Generates handoff documents when session ends                                      |
-| **Validation** — type-check, lint, build verification          | **Software Engineer Agent**            | Or Context7-Expert for library verification                                        |
-
-> **Extending with optional agents**: When domain specialists are installed (e.g., Backend Engineer, Frontend Engineer, Test Writer), add implementation and testing phase routing in `local-routing/SKILL.md`. Domain specialists should be preferred over Software Engineer Agent for their domain.
+| Phase                                                          | Route To              | Notes                                                                              |
+| -------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| **Research** — library docs, API lookup, best practices        | **Context7-Expert**   | Always route here BEFORE implementation when library/framework knowledge is needed |
+| **Implementation** — writing production code                   | **Software Engineer** | Handles all languages, frameworks, and domains                                     |
+| **Testing** — writing or fixing tests                          | **Software Engineer** | Unit, integration, e2e — all test work stays with Software Engineer                |
+| **Review** — post-implementation quality check                 | **Software Engineer** | Code review is internal — RUG must NOT launch a separate reviewer agent            |
+| **Architecture** — design decisions, ADRs, system design       | **Software Engineer** | Handles architecture alongside implementation                                      |
+| **Validation** — type-check, lint, build verification          | **Software Engineer** | Or Context7-Expert for library API verification                                    |
+| **Agent/skill infrastructure** — `.agent.md`, `SKILL.md`, etc. | **Foundry**           | Overrides all other routing for these file types                                   |
 
 ---
 
 ## 4. Bug Triage Table
 
-When diagnosing a bug, triage to the most specific agent based on symptoms. With only core agents available, most bugs route to Software Engineer Agent as the general-purpose implementation agent.
+| Symptoms                                                               | Primary Diagnosis Agent |
+| ---------------------------------------------------------------------- | ----------------------- |
+| Agent customization file misbehaving, skill output wrong or incomplete | **Foundry**             |
+| All other bugs                                                         | **Software Engineer**   |
 
-| Symptoms                                                               | Primary Diagnosis Agent                |
-| ---------------------------------------------------------------------- | -------------------------------------- |
-| Agent customization file misbehaving, skill output wrong or incomplete | **Foundry**                            |
-| All other bugs                                                         | **Software Engineer Agent** (fallback) |
-
-> **Extending with optional agents**: Consumers should add domain-specific triage rows in `local-routing/SKILL.md` when they opt into specialist agents (e.g., API errors → Backend Engineer, UI rendering bugs → Frontend Engineer, Docker build failures → Infrastructure Engineer).
+> **Extending**: Consumers can add domain-specific triage rows in `local-routing/SKILL.md` for optional agents (e.g., app store submission failures → App Store Deployment Expert).
 
 ---
 
@@ -100,15 +92,13 @@ When diagnosing a bug, triage to the most specific agent based on symptoms. With
 
 Shows which core agents can hand off to which. A ✅ means the agent in the row can initiate a handoff to the agent in the column.
 
-| From ↓ \ To →               | Context7 | Code Reviewer | SW Engineer | Foundry | Handoff |
-| --------------------------- | -------- | ------------- | ----------- | ------- | ------- |
-| **Context7-Expert**         | —        | —             | ✅          | —       | —       |
-| **Code Reviewer**           | ✅       | —             | —           | —       | —       |
-| **Software Engineer Agent** | ✅       | ✅            | —           | —       | —       |
-| **Foundry**                 | ✅       | ✅            | —           | —       | —       |
-| **Handoff**                 | —        | —             | —           | —       | —       |
+| From ↓ \ To →         | Context7 | SW Engineer | Foundry |
+| --------------------- | -------- | ----------- | ------- |
+| **Context7-Expert**   | —        | ✅          | —       |
+| **Software Engineer** | ✅       | —           | —       |
+| **Foundry**           | ✅       | —           | —       |
 
-> **Extending with optional agents**: When optional agents are installed, add their handoff rows and columns in `local-routing/SKILL.md`.
+> **Extending**: When optional agents are installed, add their handoff rows and columns in `local-routing/SKILL.md`.
 
 ---
 
@@ -127,16 +117,14 @@ Any task that involves creating, editing, or debugging these file types **MUST**
 - `copilot-instructions.md`
 - `AGENTS.md`
 
-**NEVER** route agent/skill file work to Software Engineer Agent or any other agent. Foundry is the only agent with the knowledge to correctly author these files.
+**NEVER** route agent/skill file work to Software Engineer or any other agent. Foundry is the only agent with the knowledge to correctly author these files.
 
-### Override 2: Agent File Fix-Back Rule
+If any agent discovers an issue with an agent or skill file during its work, the fix must be routed **back to Foundry** — not handled by the discovering agent.
 
-If any agent (e.g., Code Reviewer) discovers an issue with an agent or skill file during its work, the fix must be routed **back to Foundry** — not handled by the agent that found the issue.
+### Override 2: Research Before Implementation
 
-### Override 3: Research Before Implementation
+When a task involves unfamiliar library/framework APIs, route to **Context7-Expert** for research BEFORE routing to Software Engineer. Do not skip the research phase.
 
-When a task involves unfamiliar library/framework APIs, route to **Context7-Expert** for research BEFORE routing to the implementation agent. Do not skip the research phase.
+### Override 3: No Separate Code Reviewer
 
-### Note: Optional Specialist Agents
-
-When optional specialist agents are available (added via local-routing), they should be **preferred over Software Engineer Agent** for their domain. For example, if Backend Engineer is installed and a task involves API routes, route to Backend Engineer instead of Software Engineer Agent. The local-routing skill should declare these preferences explicitly.
+**Software Engineer handles code review internally.** RUG must NOT launch a separate reviewer agent after implementation. If a review is requested, route it directly to Software Engineer.
