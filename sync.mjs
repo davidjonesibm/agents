@@ -828,9 +828,6 @@ function main() {
     console.log('Checking skill dependencies …');
     const depResult = checkSkillDeps(tmp, cwd, skills, requestedAgents);
 
-    console.log('Checking local-routing template version …');
-    checkLocalRoutingVersion(tmp, cwd);
-
     console.log('Updating RUG agent roster …');
     updateRugAgentRoster(cwd);
 
@@ -846,6 +843,9 @@ function main() {
         '  ⚠️ rug-routing was updated — review .github/skills/local-routing/SKILL.md for new agents or routing changes',
       );
     }
+
+    // Print the local-routing template warning last so it's impossible to miss
+    checkLocalRoutingVersion(tmp, cwd);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
