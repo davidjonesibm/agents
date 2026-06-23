@@ -63,6 +63,15 @@ function listFiles(dir, filter) {
   });
 }
 
+/** List directories in a directory matching an optional filter. Non-recursive. */
+function listDirectories(dir, filter) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((f) => {
+    if (filter && !filter(f)) return false;
+    return statSync(join(dir, f)).isDirectory();
+  });
+}
+
 /** Extract the name: field from a YAML frontmatter body string. */
 function extractFrontmatterName(frontmatterBody) {
   const match = frontmatterBody.match(/^name:\s*['"]?(.*?)['"]?\s*$/m);
@@ -112,8 +121,8 @@ function syncAgents(sourceRoot, targetRoot, requestedAgents) {
     ),
   );
 
-  if (srcAgents.size === 0) {
-    console.log('  ⚠️  No requested .agent.md files found in source repo.');
+  if (allSrcAgents.size === 0) {
+    console.log('  ⚠️  No .agent.md files found in source repo.');
     return { added: [], updated: [], removed: [] };
   }
 
@@ -142,10 +151,10 @@ function syncAgents(sourceRoot, targetRoot, requestedAgents) {
     // else: unchanged — skip
   }
 
-  // Remove agents from target that are in the requested set but no longer in source
+  // Remove source-managed agents that are now excluded from sync.
   for (const file of tgtAgents) {
     const name = file.replace(/\.agent\.md$/, '');
-    if (requestedAgents.has(name) && !allSrcAgents.has(file)) {
+    if (allSrcAgents.has(file) && !requestedAgents.has(name)) {
       rmSync(join(tgtDir, file));
       removed.push(file);
     }
@@ -163,6 +172,19 @@ const SKILL_LOCATIONS = [
   { srcBase: 'skills', tgtBase: 'skills' },
   { srcBase: join('.github', 'skills'), tgtBase: join('.github', 'skills') },
 ];
+
+function discoverSkillNames(sourceRoot) {
+  const skillNames = new Set();
+
+  for (const loc of SKILL_LOCATIONS) {
+    const dir = join(sourceRoot, loc.srcBase);
+    for (const name of listDirectories(dir)) {
+      skillNames.add(name);
+    }
+  }
+
+  return [...skillNames].sort();
+}
 
 function findSkillSource(sourceRoot, skillName) {
   for (const loc of SKILL_LOCATIONS) {
@@ -204,7 +226,9 @@ function snapshotsEqual(a, b) {
 }
 
 function syncSkills(sourceRoot, targetRoot, skillNames) {
-  const results = { synced: [], unchanged: [], notFound: [] };
+  const results = { synced: [], unchanged: [], removed: [], notFound: [] };
+  const requestedSkillSet = new Set(skillNames);
+  const discoveredSkillNames = new Set(discoverSkillNames(sourceRoot));
 
   for (const name of skillNames) {
     const found = findSkillSource(sourceRoot, name);
@@ -233,6 +257,18 @@ function syncSkills(sourceRoot, targetRoot, skillNames) {
       results.unchanged.push({ name, dest });
     } else {
       results.synced.push({ name, dest });
+    }
+  }
+
+  for (const name of discoveredSkillNames) {
+    if (requestedSkillSet.has(name)) continue;
+
+    for (const loc of SKILL_LOCATIONS) {
+      const tgtDir = join(targetRoot, loc.tgtBase, name);
+      if (!existsSync(tgtDir) || !statSync(tgtDir).isDirectory()) continue;
+
+      rmSync(tgtDir, { recursive: true, force: true });
+      results.removed.push({ name, dest: join(loc.tgtBase, name) });
     }
   }
 
@@ -265,8 +301,6 @@ function checkSkillDeps(
     .map((f) => f.replace(/\.agent\.md$/, ''))
     .filter((name) => requestedAgents.has(name));
 
-  const manifestSkillSet = new Set(manifestSkills);
-
   const warnings = [];
   const scaffolded = [];
   const skipped = [];
@@ -277,11 +311,7 @@ function checkSkillDeps(
     if (!agentDeps?.skills) continue;
 
     for (const dep of agentDeps.skills) {
-      if (dep.type === 'bundled') {
-        if (!manifestSkillSet.has(dep.name)) {
-          warnings.push({ agent, skill: dep.name });
-        }
-      } else if (dep.type === 'scaffold') {
+      if (dep.type === 'scaffold') {
         const targetPath = join(targetRoot, dep.location);
         if (existsSync(targetPath)) {
           skipped.push({ agent, skill: dep.name, path: dep.location });
@@ -300,12 +330,6 @@ function checkSkillDeps(
         }
       }
     }
-  }
-
-  for (const w of warnings) {
-    console.log(
-      `  ⚠️ Agent "${w.agent}" requires skill "${w.skill}" — add it to your .copilot-deps.json skills array`,
-    );
   }
 
   return { warnings, scaffolded, skipped, templateMissing };
@@ -425,13 +449,22 @@ function printSummary(agentResult, skillResult, depResult) {
       console.log(`  ✅ ${s.name} → ${s.dest}`),
     );
   }
+  if (skillResult.removed.length) {
+    skillResult.removed.forEach((s) =>
+      console.log(`  ❌ ${s.name} → removed from ${s.dest}`),
+    );
+  }
   if (skillResult.notFound.length) {
     skillResult.notFound.forEach((s) =>
       console.log(`  ⚠️ ${s} — not found in source repo`),
     );
   }
-  if (skillResult.synced.length === 0 && skillResult.notFound.length === 0) {
-    console.log('  (no skills requested)');
+  if (
+    skillResult.synced.length === 0 &&
+    skillResult.removed.length === 0 &&
+    skillResult.notFound.length === 0
+  ) {
+    console.log('  (no changes)');
   }
 
   // Skill Dependencies
@@ -484,40 +517,88 @@ function main() {
   console.log('Reading .copilot-deps.json …');
   const manifest = readManifest(cwd);
 
+  if (Array.isArray(manifest.agents) || Array.isArray(manifest.skills)) {
+    console.error('\n⚠️  Deprecated .copilot-deps.json format detected.');
+    console.error(
+      '   Use "excludeAgents" and "excludeSkills" instead of "agents" and "skills".',
+    );
+    console.error('   New format:');
+    console.error('   {');
+    console.error('     "source": "owner/repo",');
+    console.error('     "ref": "main",');
+    console.error('     "excludeAgents": [],');
+    console.error('     "excludeSkills": []');
+    console.error('   }');
+    die(
+      'Migrate .copilot-deps.json to the exclude-based format and rerun sync.',
+    );
+  }
+
   const {
     source,
     ref = 'main',
-    skills = [],
-    agents: consumerAgents = [],
+    excludeAgents = [],
+    excludeSkills = [],
   } = manifest;
   if (!source) die('"source" field is required in .copilot-deps.json');
+  if (!Array.isArray(excludeAgents)) {
+    die('"excludeAgents" must be an array in .copilot-deps.json');
+  }
+  if (!Array.isArray(excludeSkills)) {
+    die('"excludeSkills" must be an array in .copilot-deps.json');
+  }
 
   console.log(`Cloning ${source} (ref: ${ref}) …`);
   const tmp = cloneSource(source, ref);
 
-  // Read core agents from source repo
-  const coreAgentsPath = join(tmp, 'core-agents.json');
-  let coreAgents = [];
-  if (existsSync(coreAgentsPath)) {
-    try {
-      coreAgents = JSON.parse(readFileSync(coreAgentsPath, 'utf-8'));
-    } catch (err) {
-      console.log(`  ⚠  Failed to parse core-agents.json: ${err.message}`);
-    }
-  }
-
-  // Build the combined requested agents set (core + consumer-requested)
-  const requestedAgents = new Set([...coreAgents, ...consumerAgents]);
-
   try {
+    const excludedAgentSet = new Set(excludeAgents);
+    const excludedSkillSet = new Set(excludeSkills);
+
+    const allAgentNames = listFiles(join(tmp, '.github', 'agents'), (f) =>
+      f.endsWith('.agent.md'),
+    )
+      .map((f) => f.replace(/\.agent\.md$/, ''))
+      .sort();
+    const requestedAgents = new Set(
+      allAgentNames.filter((name) => !excludedAgentSet.has(name)),
+    );
+
+    const allSkillNames = discoverSkillNames(tmp);
+    const requestedSkills = allSkillNames.filter(
+      (name) => !excludedSkillSet.has(name),
+    );
+
+    const existingAgentNames = new Set(
+      listFiles(join(cwd, '.github', 'agents'), (f) =>
+        f.endsWith('.agent.md'),
+      ).map((f) => f.replace(/\.agent\.md$/, '')),
+    );
+    const newAgentNames = [...requestedAgents]
+      .filter((name) => !existingAgentNames.has(name))
+      .sort();
+
+    if (newAgentNames.length) {
+      console.log('\n🆕 New agents available from source:');
+      newAgentNames.forEach((name) => console.log(`  • ${name}`));
+      console.log(
+        'These will be synced. Add to "excludeAgents" in .copilot-deps.json to skip them.\n',
+      );
+    }
+
     console.log('Syncing agents …');
     const agentResult = syncAgents(tmp, cwd, requestedAgents);
 
     console.log('Syncing skills …');
-    const skillResult = syncSkills(tmp, cwd, skills);
+    const skillResult = syncSkills(tmp, cwd, requestedSkills);
 
     console.log('Checking skill dependencies …');
-    const depResult = checkSkillDeps(tmp, cwd, skills, requestedAgents);
+    const depResult = checkSkillDeps(
+      tmp,
+      cwd,
+      requestedSkills,
+      requestedAgents,
+    );
 
     console.log('Updating RUG agent roster …');
     updateRugAgentRoster(cwd);

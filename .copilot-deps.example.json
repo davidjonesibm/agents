@@ -1,11 +1,6 @@
 {
   "source": "davidjonesibm/agents",
   "ref": "main",
-  "agents": [
-    "architect",
-    "backend-engineer",
-    "frontend-engineer",
-    "test-writer"
-  ],
-  "skills": ["rug-routing", "skill-builder", "agent-builder"]
+  "excludeAgents": [],
+  "excludeSkills": []
 }
