@@ -25,7 +25,9 @@ Centralized distribution system for VS Code Copilot agent definitions and skills
 - **Agents** — All source agents sync by default, except names listed in `excludeAgents`
 - **Skills** — Only skills listed in the `skills` array sync; the example file lists all available skills so you can trim to what you need
 - **Scaffold skills** — Auto-created from templates when required by an agent (never overwritten once they exist)
+- **Instruction Templates** — Token-efficient `.instructions.md` templates synced to `instruction-templates/` (for reference/customization)
 - **Instructions** — `.github/copilot-instructions.md` is **never** synced (repo-specific)
+- **Docs** — `docs/` is **not** synced to consumers (your repo has its own docs); only mirrored in source-repo mode
 
 ## Setup: Central Repo (one-time)
 
@@ -103,36 +105,40 @@ All agents sync by default unless excluded in `.copilot-deps.json`.
 
 ## Available Skills
 
-| Skill                     | Location          | Description                                                                                                                     |
-| ------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `agent-builder`           | `.github/skills/` | Builds, edits, and reviews VS Code agent customization files (.agent.md, .instructions.md, .prompt.md, copilot-instructions.md) |
-| `android-kotlin-pro`      | `.github/skills/` | Android Kotlin code review — Jetpack Compose, MVVM/MVI, Hilt, Coroutines/Flow, Room, Material Design 3                          |
-| `api-design-pro`          | `.github/skills/` | API architecture — 3-layer design pattern, RESTful conventions, resilience, DTO design, error handling (framework-agnostic)     |
-| `caddy-pro`               | `.github/skills/` | Caddy v2 configuration — reverse proxy, TLS, static files, security headers, SPA/PWA deployment                                 |
-| `dapper-pro`              | `.github/skills/` | Dapper code review — parameterized queries, transactions, SQL injection prevention, performance                                 |
-| `docker-pro`              | `.github/skills/` | Docker code review — Dockerfiles, multi-stage builds, Docker Compose, security hardening                                        |
-| `dotnet-migration`        | `.github/skills/` | .NET Framework to modern .NET (.NET 8+) migration — assessment, ASP.NET Core, EF Core, WCF → gRPC                               |
-| `dotnet-server`           | `.github/skills/` | ASP.NET Core code review — minimal APIs, middleware, DI, EF Core, authentication, .NET 8+ patterns                              |
-| `fastify-pro`             | `.github/skills/` | Fastify code review — plugin architecture, TypeScript integration, performance                                                  |
-| `flutter-pro`             | `.github/skills/` | Flutter/Dart code review — state management (Riverpod/Bloc), navigation, performance, accessibility, testing                    |
-| `golang-api`              | `.github/skills/` | Go API code review — HTTP routing, middleware, error handling, database access, testing                                         |
-| `link-workspace-packages` | `.github/skills/` | Monorepo package linking (npm, yarn, pnpm, bun)                                                                                 |
-| `mediatr-pro`             | `.github/skills/` | MediatR code review — CQRS, handlers, pipeline behaviors, notifications                                                         |
-| `mobile-uiux-pro`         | `.github/skills/` | Mobile UI/UX review — Apple HIG, Material Design 3, WCAG 2.2, responsive layouts, gestures                                      |
-| `monitor-ci`              | `.github/skills/` | Nx Cloud CI pipeline monitoring and self-healing fixes                                                                          |
-| `pocketbase-pro`          | `.github/skills/` | PocketBase code review — collection design, API rules, hooks, auth, real-time subscriptions                                     |
-| `postgres-pro`            | `.github/skills/` | PostgreSQL code review — schema design, query optimization, indexing, RLS, PL/pgSQL, performance                                |
-| `pwa-pro`                 | `.github/skills/` | PWA code review — service workers, caching strategies, offline support, push notifications                                      |
-| `react-pro`               | `.github/skills/` | React 19+ code review — hooks, components, JSX, state/effects, performance, security, TypeScript, testing                       |
-| `recoil-pro`              | `.github/skills/` | Recoil code review — atoms/selectors, async state, snapshots, atom effects, performance, TypeScript                             |
-| `rug-routing`             | `.github/skills/` | RUG orchestrator routing table — agent roster, routing rules, handoff matrix (scaffold skill)                                   |
-| `skill-builder`           | `.github/skills/` | Builds and maintains SKILL.md skill packages (reference files, frontmatter, research methodology)                               |
-| `supabase-pro`            | `.github/skills/` | Supabase code review — RLS policies, auth, storage, migrations, TypeScript integration                                          |
-| `swiftui-pro`             | `.github/skills/` | SwiftUI code review — modern APIs, maintainability, performance                                                                 |
-| `tanstack-query-pro`      | `.github/skills/` | TanStack Query v5 review — useQuery/useMutation, caching, invalidation, optimistic updates, SSR hydration, TypeScript           |
-| `vue-pro`                 | `.github/skills/` | Vue 3 code review — Composition API, TypeScript, Pinia state management, performance                                            |
-| `zustand-pro`             | `.github/skills/` | Zustand v5 code review — store patterns, selectors, middleware, subscriptions, re-render optimization, TypeScript               |
-| `workmaker-pro`           | `.github/skills/` | User story generation — epics, features, stories, job stories, INVEST criteria, story splitting, acceptance criteria            |
+| Skill                       | Location          | Description                                                                                                                       |
+| --------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-builder`             | `.github/skills/` | Builds, edits, and reviews VS Code agent customization files (.agent.md, .instructions.md, .prompt.md, copilot-instructions.md)   |
+| `android-kotlin-pro`        | `.github/skills/` | Android Kotlin code review — Jetpack Compose, MVVM/MVI, Hilt, Coroutines/Flow, Room, Material Design 3                            |
+| `api-design-pro`            | `.github/skills/` | API architecture — 3-layer design pattern, RESTful conventions, resilience, DTO design, error handling (framework-agnostic)       |
+| `caddy-pro`                 | `.github/skills/` | Caddy v2 configuration — reverse proxy, TLS, static files, security headers, SPA/PWA deployment                                   |
+| `dapper-pro`                | `.github/skills/` | Dapper code review — parameterized queries, transactions, SQL injection prevention, performance                                   |
+| `docker-pro`                | `.github/skills/` | Docker code review — Dockerfiles, multi-stage builds, Docker Compose, security hardening                                          |
+| `dotnet-migration`          | `.github/skills/` | .NET Framework to modern .NET (.NET 8+) migration — assessment, ASP.NET Core, EF Core, WCF → gRPC                                 |
+| `dotnet-server`             | `.github/skills/` | ASP.NET Core code review — minimal APIs, middleware, DI, EF Core, authentication, .NET 8+ patterns                                |
+| `fastify-pro`               | `.github/skills/` | Fastify code review — plugin architecture, TypeScript integration, performance                                                    |
+| `flutter-pro`               | `.github/skills/` | Flutter/Dart code review — state management (Riverpod/Bloc), navigation, performance, accessibility, testing                      |
+| `golang-api`                | `.github/skills/` | Go API code review — HTTP routing, middleware, error handling, database access, testing                                           |
+| `insomnia-pro`              | `.github/skills/` | Insomnia API client workflows — collections, environments, pre-request/after-response scripts, Inso CLI, GraphQL, gRPC, WebSocket |
+| `link-workspace-packages`   | `.github/skills/` | Monorepo package linking (npm, yarn, pnpm, bun)                                                                                   |
+| `mediatr-pro`               | `.github/skills/` | MediatR code review — CQRS, handlers, pipeline behaviors, notifications                                                           |
+| `mobile-uiux-pro`           | `.github/skills/` | Mobile UI/UX review — Apple HIG, Material Design 3, WCAG 2.2, responsive layouts, gestures                                        |
+| `monitor-ci`                | `.github/skills/` | Nx Cloud CI pipeline monitoring and self-healing fixes                                                                            |
+| `pocketbase-pro`            | `.github/skills/` | PocketBase code review — collection design, API rules, hooks, auth, real-time subscriptions                                       |
+| `postgres-pro`              | `.github/skills/` | PostgreSQL code review — schema design, query optimization, indexing, RLS, PL/pgSQL, performance                                  |
+| `pwa-pro`                   | `.github/skills/` | PWA code review — service workers, caching strategies, offline support, push notifications                                        |
+| `react-pro`                 | `.github/skills/` | React 19+ code review — hooks, components, JSX, state/effects, performance, security, TypeScript, testing                         |
+| `recoil-pro`                | `.github/skills/` | Recoil code review — atoms/selectors, async state, snapshots, atom effects, performance, TypeScript                               |
+| `respawn-pro`               | `.github/skills/` | Respawn database cleanup for .NET integration tests — Respawner setup, RespawnerOptions, database provider support                |
+| `rug-routing`               | `.github/skills/` | RUG orchestrator routing table — agent roster, routing rules, handoff matrix (scaffold skill)                                     |
+| `skill-builder`             | `.github/skills/` | Builds and maintains SKILL.md skill packages (reference files, frontmatter, research methodology)                                 |
+| `supabase-pro`              | `.github/skills/` | Supabase code review — RLS policies, auth, storage, migrations, TypeScript integration                                            |
+| `swiftui-pro`               | `.github/skills/` | SwiftUI code review — modern APIs, maintainability, performance                                                                   |
+| `tanstack-query-pro`        | `.github/skills/` | TanStack Query v5 review — useQuery/useMutation, caching, invalidation, optimistic updates, SSR hydration, TypeScript             |
+| `testcontainers-dotnet-pro` | `.github/skills/` | Testcontainers for .NET — container lifecycle, built-in modules, wait strategies, xUnit/NUnit/MSTest integration                  |
+| `vue-pro`                   | `.github/skills/` | Vue 3 code review — Composition API, TypeScript, Pinia state management, performance                                              |
+| `workmaker-pro`             | `.github/skills/` | User story generation — epics, features, stories, job stories, INVEST criteria, story splitting, acceptance criteria              |
+| `xunit-v3-pro`              | `.github/skills/` | xUnit.net v3 test code — Fact/Theory/fixtures, IAsyncLifetime, Assert API, TestContext, parallelization, migration from v2        |
+| `zustand-pro`               | `.github/skills/` | Zustand v5 code review — store patterns, selectors, middleware, subscriptions, re-render optimization, TypeScript                 |
 
 ## Skill Dependencies
 
@@ -218,6 +224,8 @@ In source-repo mode `sync.mjs` performs a complete mirror — no filtering, no o
 | `consumer-workflow.yml`      | The fork can offer this template to its own consumers                      |
 | `sync.mjs` + `sync.sh`       | The fork ships the same sync tooling to its consumers                      |
 | `.copilot-deps.example.json` | Updated example for the fork's consumers to copy                           |
+| `docs/`                      | Token optimization guides synced for reference                             |
+| `instruction-templates/`     | Instruction file templates for consumer customization                      |
 
 `excludeAgents` and `skills` are ignored in source-repo mode and do not need to be present.
 

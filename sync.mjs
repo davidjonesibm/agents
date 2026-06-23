@@ -225,6 +225,59 @@ function snapshotsEqual(a, b) {
   return true;
 }
 
+/** Mirror a directory from sourceRoot/<dirName> to targetRoot/<dirName>. Full overwrite. */
+function syncDirectory(sourceRoot, targetRoot, dirName) {
+  const result = { synced: [], unchanged: [] };
+  const srcPath = join(sourceRoot, dirName);
+  if (!existsSync(srcPath)) return result;
+  const tgtPath = join(targetRoot, dirName);
+  const before = snapshotDir(tgtPath);
+  if (existsSync(tgtPath)) {
+    rmSync(tgtPath, { recursive: true, force: true });
+  }
+  mkdirSync(tgtPath, { recursive: true });
+  cpSync(srcPath, tgtPath, { recursive: true });
+  const after = snapshotDir(tgtPath);
+  if (before.size > 0 && snapshotsEqual(before, after)) {
+    result.unchanged.push(`${dirName}/`);
+  } else {
+    result.synced.push(`${dirName}/`);
+  }
+  return result;
+}
+
+/**
+ * Merge files from sourceRoot/<dirName> into targetRoot/<dirName>.
+ * Adds and updates files from source but never deletes target-only files,
+ * preserving any bespoke content the consumer has added.
+ */
+function mergeDirectory(sourceRoot, targetRoot, dirName) {
+  const result = { added: [], updated: [], unchanged: [] };
+  const srcPath = join(sourceRoot, dirName);
+  if (!existsSync(srcPath)) return result;
+  const srcSnapshot = snapshotDir(srcPath);
+  const tgtPath = join(targetRoot, dirName);
+  mkdirSync(tgtPath, { recursive: true });
+  for (const [relPath, srcContent] of srcSnapshot) {
+    const tgtFile = join(tgtPath, relPath);
+    const tgtDir = join(tgtFile, '..');
+    mkdirSync(tgtDir, { recursive: true });
+    if (!existsSync(tgtFile)) {
+      writeFileSync(tgtFile, srcContent);
+      result.added.push(`${dirName}/${relPath}`);
+    } else {
+      const tgtContent = readFileSync(tgtFile);
+      if (!srcContent.equals(tgtContent)) {
+        writeFileSync(tgtFile, srcContent);
+        result.updated.push(`${dirName}/${relPath}`);
+      } else {
+        result.unchanged.push(`${dirName}/${relPath}`);
+      }
+    }
+  }
+  return result;
+}
+
 function syncSkills(sourceRoot, targetRoot, skillNames) {
   const results = { synced: [], unchanged: [], notFound: [] };
   const requestedSkillSet = new Set(skillNames);
@@ -557,7 +610,24 @@ function syncSourceRepo(sourceRoot, targetRoot) {
     }
   }
 
-  return { agentResult, skillResult, templateResult, extraResult };
+  // 5. Mirror docs/
+  const docsResult = syncDirectory(sourceRoot, targetRoot, 'docs');
+
+  // 6. Mirror instruction-templates/
+  const instructionTemplatesResult = syncDirectory(
+    sourceRoot,
+    targetRoot,
+    'instruction-templates',
+  );
+
+  return {
+    agentResult,
+    skillResult,
+    templateResult,
+    extraResult,
+    docsResult,
+    instructionTemplatesResult,
+  };
 }
 
 function printSourceRepoSummary({
@@ -565,6 +635,8 @@ function printSourceRepoSummary({
   skillResult,
   templateResult,
   extraResult,
+  docsResult,
+  instructionTemplatesResult,
 }) {
   console.log('\n─── Source-Repo Sync Summary ───────────────\n');
 
@@ -623,6 +695,39 @@ function printSourceRepoSummary({
     console.log('  (none found in source)');
   }
 
+  // Docs
+  console.log('\nDocs (docs/):');
+  if (docsResult.synced.length) {
+    docsResult.synced.forEach((name) => console.log(`  ✅ ${name}`));
+  }
+  if (docsResult.unchanged.length) {
+    docsResult.unchanged.forEach((name) =>
+      console.log(`  – ${name} (unchanged)`),
+    );
+  }
+  if (docsResult.synced.length === 0 && docsResult.unchanged.length === 0) {
+    console.log('  (none found in source)');
+  }
+
+  // Instruction Templates
+  console.log('\nInstruction Templates (instruction-templates/):');
+  if (instructionTemplatesResult.synced.length) {
+    instructionTemplatesResult.synced.forEach((name) =>
+      console.log(`  ✅ ${name}`),
+    );
+  }
+  if (instructionTemplatesResult.unchanged.length) {
+    instructionTemplatesResult.unchanged.forEach((name) =>
+      console.log(`  – ${name} (unchanged)`),
+    );
+  }
+  if (
+    instructionTemplatesResult.synced.length === 0 &&
+    instructionTemplatesResult.unchanged.length === 0
+  ) {
+    console.log('  (none found in source)');
+  }
+
   // Infrastructure Files
   console.log('\nInfrastructure Files:');
   if (extraResult.synced.length === 0 && extraResult.unchanged.length === 0) {
@@ -645,7 +750,13 @@ function printSourceRepoSummary({
 // Summary
 // ---------------------------------------------------------------------------
 
-function printSummary(agentResult, skillResult, depResult) {
+function printSummary(
+  agentResult,
+  skillResult,
+  depResult,
+  instructionTemplatesResult,
+  docsResult,
+) {
   console.log('\n─── Sync Summary ───────────────────────────\n');
 
   // Agents
@@ -720,6 +831,50 @@ function printSummary(agentResult, skillResult, depResult) {
     }
     if (!hasOutput) {
       console.log('  (all dependencies satisfied)');
+    }
+  }
+
+  // Instruction Templates
+  if (instructionTemplatesResult) {
+    console.log('\nInstruction Templates (instruction-templates/):');
+    if (instructionTemplatesResult.synced.length) {
+      instructionTemplatesResult.synced.forEach((name) =>
+        console.log(`  ✅ ${name}`),
+      );
+    }
+    if (instructionTemplatesResult.unchanged.length) {
+      instructionTemplatesResult.unchanged.forEach((name) =>
+        console.log(`  – ${name} (unchanged)`),
+      );
+    }
+    if (
+      instructionTemplatesResult.synced.length === 0 &&
+      instructionTemplatesResult.unchanged.length === 0
+    ) {
+      console.log('  (none found in source)');
+    }
+  }
+
+  // Docs (merged — consumer files preserved)
+  if (docsResult) {
+    console.log('\nDocs (docs/):');
+    if (docsResult.added.length) {
+      docsResult.added.forEach((f) => console.log(`  ✅ ${f} (added)`));
+    }
+    if (docsResult.updated.length) {
+      docsResult.updated.forEach((f) => console.log(`  🔄 ${f} (updated)`));
+    }
+    if (
+      docsResult.added.length === 0 &&
+      docsResult.updated.length === 0 &&
+      docsResult.unchanged.length === 0
+    ) {
+      console.log('  (none found in source)');
+    } else if (
+      docsResult.added.length === 0 &&
+      docsResult.updated.length === 0
+    ) {
+      console.log('  (no changes)');
     }
   }
 
@@ -825,13 +980,29 @@ function main() {
     console.log('Syncing skills …');
     const skillResult = syncSkills(tmp, cwd, requestedSkills);
 
+    console.log('Syncing instruction-templates …');
+    const instructionTemplatesResult = syncDirectory(
+      tmp,
+      cwd,
+      'instruction-templates',
+    );
+
+    console.log('Merging docs …');
+    const docsResult = mergeDirectory(tmp, cwd, 'docs');
+
     console.log('Checking skill dependencies …');
     const depResult = checkSkillDeps(tmp, cwd, skills, requestedAgents);
 
     console.log('Updating RUG agent roster …');
     updateRugAgentRoster(cwd);
 
-    printSummary(agentResult, skillResult, depResult);
+    printSummary(
+      agentResult,
+      skillResult,
+      depResult,
+      instructionTemplatesResult,
+      docsResult,
+    );
 
     // Warn if rug-routing was updated and local-routing exists in target
     const rugSynced = skillResult.synced.some((s) => s.name === 'rug-routing');
