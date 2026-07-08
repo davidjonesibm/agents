@@ -109,6 +109,7 @@ All agents sync by default unless excluded in `.copilot-deps.json`.
 | --------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `agent-builder`             | `.github/skills/` | Builds, edits, and reviews VS Code agent customization files (.agent.md, .instructions.md, .prompt.md, copilot-instructions.md)   |
 | `android-kotlin-pro`        | `.github/skills/` | Android Kotlin code review — Jetpack Compose, MVVM/MVI, Hilt, Coroutines/Flow, Room, Material Design 3                            |
+| `appium-wdio-pro`           | `.github/skills/` | Appium + WebDriverIO mobile testing — scaffolding, capabilities, selectors, gestures, WebView, debugging, Appium Inspector, CI/CD |
 | `api-design-pro`            | `.github/skills/` | API architecture — 3-layer design pattern, RESTful conventions, resilience, DTO design, error handling (framework-agnostic)       |
 | `caddy-pro`                 | `.github/skills/` | Caddy v2 configuration — reverse proxy, TLS, static files, security headers, SPA/PWA deployment                                   |
 | `dapper-pro`                | `.github/skills/` | Dapper code review — parameterized queries, transactions, SQL injection prevention, performance                                   |
