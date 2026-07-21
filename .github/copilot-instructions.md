@@ -10,10 +10,11 @@ This is the **agent-repo** — a centralized distribution system for VS Code Cop
 
 | Path                                     | Purpose                                                                         |
 | ---------------------------------------- | ------------------------------------------------------------------------------- |
-| `.github/agents/*.agent.md`              | Agent definitions — all source agents sync by default unless excluded           |
-| `.github/skills/<name>/SKILL.md`         | Skill entry points — all source skills sync by default unless excluded          |
-| `.github/skills/<name>/references/`      | Reference files supporting a skill (synced with the skill)                      |
+| `agents/*.agent.md`                      | Agent definitions — all source agents sync by default unless excluded           |
+| `skills/<name>/SKILL.md`                 | Skill entry points — all source skills sync by default unless excluded          |
+| `skills/<name>/references/`              | Reference files supporting a skill (synced with the skill)                      |
 | `skill-templates/<name>/`                | Templates for scaffold skills (auto-created in consumers, never overwritten)    |
+| `install.mjs`                            | Installs agents and skills globally to ~/.copilot and/or ~/.claude              |
 | `sync.mjs`                               | Node.js script that copies agents and skills into a consuming repo              |
 | `core-agents.json`                       | Legacy agent list retained for compatibility/reference; current sync ignores it |
 | `consumers.json`                         | List of consuming repos that receive dispatch events on push to `main`          |
@@ -22,9 +23,14 @@ This is the **agent-repo** — a centralized distribution system for VS Code Cop
 | `.github/workflows/notify-consumers.yml` | Dispatches `copilot-deps-update` events to consumers on push                    |
 | `.github/copilot-instructions.md`        | This file — **never synced** (each repo has its own)                            |
 
+> **Why `agents/` and `skills/` live at root (not `.github/`)**:
+> Copilot auto-discovers skills from `.github/skills/` and agents from `.github/agents/`.
+> Since this repo is the _source_, and skills/agents are installed globally via `install.mjs`,
+> keeping them outside `.github/` avoids loading duplicates when working in this repo.
+
 ## Agent File Conventions
 
-Agent files live in `.github/agents/` with kebab-case filenames (e.g., `software-engineer.agent.md`).
+Agent files live in `agents/` with kebab-case filenames (e.g., `software-engineer.agent.md`).
 
 **Required YAML frontmatter:**
 
@@ -47,7 +53,7 @@ tools: [tool-category-or-id, ...]
 
 ## Skill File Conventions
 
-Each skill is a directory under `.github/skills/<skill-name>/` containing at minimum a `SKILL.md`.
+Each skill is a directory under `skills/<skill-name>/` containing at minimum a `SKILL.md`.
 
 **Required YAML frontmatter in SKILL.md:**
 
@@ -76,8 +82,8 @@ description: >-
 
 **`sync.mjs`** runs in a consuming repo's root directory. It reads `.copilot-deps.json` from the consumer and:
 
-1. **Agents** — discovers all source agents in `.github/agents`, excludes any names listed in `excludeAgents`, syncs the rest, and removes source-managed agents the consumer has excluded.
-2. **Skills** — discovers all source skills in `skills/` and `.github/skills/`, excludes any names listed in `excludeSkills`, syncs the rest, and removes excluded source-managed skill directories from the consumer.
+1. **Agents** — discovers all source agents in `agents/` and `.github/agents/`, excludes any names listed in `excludeAgents`, syncs the rest to `.github/agents/` in the consumer, and removes source-managed agents the consumer has excluded.
+2. **Skills** — discovers all source skills in `skills/` and `.github/skills/`, excludes any names listed in `excludeSkills`, syncs the rest to `.github/skills/` in the consumer, and removes excluded source-managed skill directories from the consumer.
 3. **Skill dependencies** — reads `skill-deps.json` and checks:
 
 - `bundled` deps: are normally satisfied automatically because source skills sync by default.
@@ -99,14 +105,14 @@ If a consumer still uses the old opt-in `agents` or `skills` arrays, `sync.mjs` 
 
 ## Adding a New Agent
 
-1. Create `.github/agents/<name>.agent.md` with proper frontmatter (`name`, `description`, `tools`).
+1. Create `agents/<name>.agent.md` with proper frontmatter (`name`, `description`, `tools`).
 2. Write the agent body with clear role, instructions, and output format.
 3. If the agent requires specific skills, add an entry to `skill-deps.json`.
 4. Update `README.md` if the agent introduces new concepts or workflows.
 
 ## Adding a New Skill
 
-1. Create `.github/skills/<skill-name>/SKILL.md` with frontmatter (`name`, `description`).
+1. Create `skills/<skill-name>/SKILL.md` with frontmatter (`name`, `description`).
 2. Add `references/` directory with focused topic files if the skill has substantial content.
 3. Add the skill to the **Available Skills** table in `README.md`.
 4. If any agent depends on this skill, add it to `skill-deps.json` under that agent.

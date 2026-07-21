@@ -106,12 +106,22 @@ function contentsEqual(filename, srcBuf, tgtBuf) {
 // ---------------------------------------------------------------------------
 
 function syncAgents(sourceRoot, targetRoot, requestedAgents) {
-  const srcDir = join(sourceRoot, '.github', 'agents');
   const tgtDir = join(targetRoot, '.github', 'agents');
 
   const isAgent = (f) => f.endsWith('.agent.md');
 
-  const allSrcAgents = new Set(listFiles(srcDir, isAgent));
+  // Discover agents from all known source locations
+  const allSrcAgents = new Set();
+  const agentSrcMap = new Map(); // filename → source path
+  for (const loc of AGENT_LOCATIONS) {
+    const dir = join(sourceRoot, loc);
+    for (const f of listFiles(dir, isAgent)) {
+      if (!allSrcAgents.has(f)) {
+        allSrcAgents.add(f);
+        agentSrcMap.set(f, join(dir, f));
+      }
+    }
+  }
   const tgtAgents = new Set(listFiles(tgtDir, isAgent));
 
   // Filter source agents to only those in the requested set
@@ -134,7 +144,7 @@ function syncAgents(sourceRoot, targetRoot, requestedAgents) {
 
   // Copy source → target
   for (const file of srcAgents) {
-    const src = join(srcDir, file);
+    const src = agentSrcMap.get(file);
     const tgt = join(tgtDir, file);
     const existed = tgtAgents.has(file);
 
@@ -169,9 +179,12 @@ function syncAgents(sourceRoot, targetRoot, requestedAgents) {
 
 /** Known locations where skills live in the source repo. */
 const SKILL_LOCATIONS = [
-  { srcBase: 'skills', tgtBase: 'skills' },
+  { srcBase: 'skills', tgtBase: join('.github', 'skills') },
   { srcBase: join('.github', 'skills'), tgtBase: join('.github', 'skills') },
 ];
+
+/** Known locations where agents live in the source repo. */
+const AGENT_LOCATIONS = ['agents', join('.github', 'agents')];
 
 function discoverSkillNames(sourceRoot) {
   const skillNames = new Set();
@@ -336,10 +349,17 @@ function checkSkillDeps(
   }
 
   // Only check skill deps for agents the consumer actually requested
-  const srcAgentDir = join(sourceRoot, '.github', 'agents');
-  const syncedAgents = listFiles(srcAgentDir, (f) => f.endsWith('.agent.md'))
-    .map((f) => f.replace(/\.agent\.md$/, ''))
-    .filter((name) => requestedAgents.has(name));
+  const syncedAgents = [];
+  for (const loc of AGENT_LOCATIONS) {
+    for (const f of listFiles(join(sourceRoot, loc), (f) =>
+      f.endsWith('.agent.md'),
+    )) {
+      const name = f.replace(/\.agent\.md$/, '');
+      if (requestedAgents.has(name) && !syncedAgents.includes(name)) {
+        syncedAgents.push(name);
+      }
+    }
+  }
 
   const warnings = [];
   const scaffolded = [];
@@ -554,6 +574,7 @@ const SOURCE_REPO_EXTRA_FILES = [
   'consumer-workflow.yml',
   'sync.mjs',
   'sync.sh',
+  'init-templates.sh',
   '.copilot-deps.example.json',
 ];
 
@@ -563,17 +584,29 @@ const SOURCE_REPO_EXTRA_FILES = [
  * skill-templates, and key infrastructure files — no filtering, full overwrite.
  */
 function syncSourceRepo(sourceRoot, targetRoot) {
-  // 1. Sync ALL agents — no excludeAgents filtering
-  const allAgentNames = new Set(
-    listFiles(join(sourceRoot, '.github', 'agents'), (f) =>
+  // 1. Merge agents/ — adds/updates upstream agents, preserves fork-only agents
+  const agentsRootResult = mergeDirectory(sourceRoot, targetRoot, 'agents');
+
+  // Also sync any agents still in .github/agents/ into target .github/agents/
+  const allAgentNames = new Set();
+  for (const loc of AGENT_LOCATIONS) {
+    for (const f of listFiles(join(sourceRoot, loc), (f) =>
       f.endsWith('.agent.md'),
-    ).map((f) => f.replace(/\.agent\.md$/, '')),
-  );
+    )) {
+      allAgentNames.add(f.replace(/\.agent\.md$/, ''));
+    }
+  }
   const agentResult = syncAgents(sourceRoot, targetRoot, allAgentNames);
 
-  // 2. Sync ALL skills from all known locations
-  const allSkillNames = discoverSkillNames(sourceRoot);
-  const skillResult = syncSkills(sourceRoot, targetRoot, allSkillNames);
+  // 2. Merge skills/ — adds/updates upstream skills, preserves fork-only skills
+  const skillsRootResult = mergeDirectory(sourceRoot, targetRoot, 'skills');
+
+  // Also sync any skills still in .github/skills/ into target .github/skills/
+  const ghSkillNames = listDirectories(join(sourceRoot, '.github', 'skills'));
+  const skillResult =
+    ghSkillNames.length > 0
+      ? syncSkills(sourceRoot, targetRoot, ghSkillNames)
+      : { synced: [], unchanged: [], notFound: [] };
 
   // 3. Mirror skill-templates/ in full (always overwrite)
   const templateResult = { synced: [], unchanged: [] };
@@ -621,7 +654,9 @@ function syncSourceRepo(sourceRoot, targetRoot) {
   );
 
   return {
+    agentsRootResult,
     agentResult,
+    skillsRootResult,
     skillResult,
     templateResult,
     extraResult,
@@ -631,7 +666,9 @@ function syncSourceRepo(sourceRoot, targetRoot) {
 }
 
 function printSourceRepoSummary({
+  agentsRootResult,
   agentResult,
+  skillsRootResult,
   skillResult,
   templateResult,
   extraResult,
@@ -640,8 +677,27 @@ function printSourceRepoSummary({
 }) {
   console.log('\n─── Source-Repo Sync Summary ───────────────\n');
 
-  // Agents
-  console.log('Agents (.github/agents/):');
+  // Agents (root merge)
+  console.log('Agents (agents/ → agents/):');
+  if (agentsRootResult.added.length) {
+    agentsRootResult.added.forEach((f) => console.log(`  ✅ ${f} (added)`));
+  }
+  if (agentsRootResult.updated.length) {
+    agentsRootResult.updated.forEach((f) => console.log(`  🔄 ${f} (updated)`));
+  }
+  if (agentsRootResult.unchanged.length) {
+    console.log(`  – ${agentsRootResult.unchanged.length} file(s) unchanged`);
+  }
+  if (
+    agentsRootResult.added.length === 0 &&
+    agentsRootResult.updated.length === 0 &&
+    agentsRootResult.unchanged.length === 0
+  ) {
+    console.log('  (none found in source)');
+  }
+
+  // Agents (.github/agents/)
+  console.log('\nAgents (→ .github/agents/):');
   if (agentResult.added.length) {
     console.log(`  Added (${agentResult.added.length}):`);
     agentResult.added.forEach((f) => console.log(`    ✅ ${f}`));
@@ -662,8 +718,27 @@ function printSourceRepoSummary({
     console.log('  (no changes)');
   }
 
-  // Skills
-  console.log('\nSkills:');
+  // Skills (root merge)
+  console.log('\nSkills (skills/ → skills/):');
+  if (skillsRootResult.added.length) {
+    skillsRootResult.added.forEach((f) => console.log(`  ✅ ${f} (added)`));
+  }
+  if (skillsRootResult.updated.length) {
+    skillsRootResult.updated.forEach((f) => console.log(`  🔄 ${f} (updated)`));
+  }
+  if (skillsRootResult.unchanged.length) {
+    console.log(`  – ${skillsRootResult.unchanged.length} file(s) unchanged`);
+  }
+  if (
+    skillsRootResult.added.length === 0 &&
+    skillsRootResult.updated.length === 0 &&
+    skillsRootResult.unchanged.length === 0
+  ) {
+    console.log('  (none found in source)');
+  }
+
+  // Skills (.github/skills/)
+  console.log('\nSkills (→ .github/skills/):');
   if (skillResult.synced.length) {
     skillResult.synced.forEach((s) =>
       console.log(`  ✅ ${s.name} → ${s.dest}`),
@@ -882,6 +957,66 @@ function printSummary(
 }
 
 // ---------------------------------------------------------------------------
+// Post-Sync: Detect fork-only content in .github/ that should move to root
+// ---------------------------------------------------------------------------
+
+/**
+ * In source-repo mode the canonical locations for custom agents and skills
+ * are root agents/ and skills/. Items that only exist in .github/agents/ or
+ * .github/skills/ still work but create a split-brain layout. This function
+ * detects them and prints a migration suggestion.
+ */
+function suggestMoveFromGitHub(targetRoot) {
+  const isAgent = (f) => f.endsWith('.agent.md');
+
+  // Agents: find files in .github/agents/ that don't exist in agents/
+  const ghAgentDir = join(targetRoot, '.github', 'agents');
+  const rootAgentDir = join(targetRoot, 'agents');
+  const ghAgents = listFiles(ghAgentDir, isAgent);
+  const rootAgents = new Set(listFiles(rootAgentDir, isAgent));
+  const orphanAgents = ghAgents.filter((f) => !rootAgents.has(f));
+
+  // Skills: find dirs in .github/skills/ that don't exist in skills/
+  const ghSkillDir = join(targetRoot, '.github', 'skills');
+  const rootSkillDir = join(targetRoot, 'skills');
+  const ghSkills = listDirectories(ghSkillDir);
+  const rootSkills = new Set(listDirectories(rootSkillDir));
+  const orphanSkills = ghSkills.filter((s) => !rootSkills.has(s));
+
+  if (orphanAgents.length === 0 && orphanSkills.length === 0) return;
+
+  console.log(
+    '💡 Migration suggestion: move custom content to root directories\n',
+  );
+  console.log(
+    '   Source repos should keep custom agents in agents/ and custom',
+  );
+  console.log(
+    '   skills in skills/ (not .github/). Files in .github/ are auto-',
+  );
+  console.log(
+    '   generated for Copilot discovery — root is the source of truth.\n',
+  );
+
+  if (orphanAgents.length) {
+    console.log('   Agents to move:');
+    orphanAgents.forEach((f) =>
+      console.log(`     mv .github/agents/${f} agents/${f}`),
+    );
+  }
+  if (orphanSkills.length) {
+    console.log('   Skills to move:');
+    orphanSkills.forEach((s) =>
+      console.log(`     mv .github/skills/${s} skills/${s}`),
+    );
+  }
+
+  console.log(
+    '\n   After moving, re-run sync — the files will be copied back to .github/ automatically.\n',
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -927,6 +1062,7 @@ function main() {
       console.log('Updating RUG agent roster …');
       updateRugAgentRoster(cwd);
       printSourceRepoSummary(results);
+      suggestMoveFromGitHub(cwd);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -946,11 +1082,16 @@ function main() {
   try {
     const excludedAgentSet = new Set(excludeAgents);
 
-    const allAgentNames = listFiles(join(tmp, '.github', 'agents'), (f) =>
-      f.endsWith('.agent.md'),
-    )
-      .map((f) => f.replace(/\.agent\.md$/, ''))
-      .sort();
+    const allAgentNames = [];
+    for (const loc of AGENT_LOCATIONS) {
+      for (const f of listFiles(join(tmp, loc), (f) =>
+        f.endsWith('.agent.md'),
+      )) {
+        const name = f.replace(/\.agent\.md$/, '');
+        if (!allAgentNames.includes(name)) allAgentNames.push(name);
+      }
+    }
+    allAgentNames.sort();
     const requestedAgents = new Set(
       allAgentNames.filter((name) => !excludedAgentSet.has(name)),
     );

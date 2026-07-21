@@ -2,6 +2,9 @@
 
 Token-efficient templates for `.github/copilot-instructions.md` and scoped `.instructions.md` files. These templates are designed to work alongside agents and skills synced from agent-repo.
 
+> **Full guide:** See [docs/instruction-templates.md](../docs/instruction-templates.md) for setup details, token budgets, and theory.
+> **Token optimization theory:** See [docs/token-optimization.md](../docs/token-optimization.md).
+
 ---
 
 ## Quick Start

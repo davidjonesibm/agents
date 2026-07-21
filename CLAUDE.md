@@ -4,14 +4,18 @@ This repository contains reusable AI agents and skills shared across projects.
 
 ## Structure
 
+- `agents/` — Agent definitions (Copilot format, source of truth)
+- `skills/` — Skill packages with full reference documentation
 - `.claude/agents/` — Agent definitions (Claude Code format)
-- `.claude/skills/` — Skill definitions (Claude Code format, reference `.github/skills/` for detailed docs)
-- `.github/agents/` — Agent definitions (Copilot format, source of truth)
-- `.github/skills/` — Skill packages with full reference documentation
+- `.claude/skills/` — Skill definitions (Claude Code format, reference `skills/` for detailed docs)
+
+> **Why `agents/` and `skills/` at root?** Copilot auto-discovers from `.github/skills/` and
+> `.github/agents/`. Since this repo installs globally via `install.mjs`, keeping sources outside
+> `.github/` avoids loading duplicates when working in this repo.
 
 ## Reference Files
 
-Skills reference detailed documentation stored in `.github/skills/<name>/references/*.md`. When a skill instructs you to load a reference file, read it from that path.
+Skills reference detailed documentation stored in `skills/<name>/references/*.md`. When a skill instructs you to load a reference file, read it from that path.
 
 ## Available Agents
 
