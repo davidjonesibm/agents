@@ -271,7 +271,9 @@ function syncDirectory(sourceRoot, targetRoot, dirName) {
  * Adds and updates files from source but never deletes target-only files,
  * preserving any bespoke content the consumer has added.
  */
-function mergeDirectory(sourceRoot, targetRoot, dirName) {
+function mergeDirectory(sourceRoot, targetRoot, dirName, options = {}) {
+  const { exclude = [] } = options;
+  const excludeSet = new Set(exclude);
   const result = { added: [], updated: [], unchanged: [] };
   const srcPath = join(sourceRoot, dirName);
   if (!existsSync(srcPath)) return result;
@@ -279,6 +281,14 @@ function mergeDirectory(sourceRoot, targetRoot, dirName) {
   const tgtPath = join(targetRoot, dirName);
   mkdirSync(tgtPath, { recursive: true });
   for (const [relPath, srcContent] of srcSnapshot) {
+    // Check if this relPath starts with any excluded prefix
+    if (
+      excludeSet.size > 0 &&
+      [...excludeSet].some(
+        (ex) => relPath === ex || relPath.startsWith(ex + '/'),
+      )
+    )
+      continue;
     const tgtFile = join(tgtPath, relPath);
     const tgtDir = join(tgtFile, '..');
     mkdirSync(tgtDir, { recursive: true });
@@ -572,19 +582,31 @@ function updateRugAgentRoster(targetRoot) {
 // ---------------------------------------------------------------------------
 
 /**
- * Files to mirror verbatim from the source repo root into the consuming repo
- * root when operating in source-repo mode.
+ * Root-level entries to EXCLUDE from the source-repo root-file mirror.
+ * Everything else at the source root is mirrored verbatim.
+ *
+ * Directories handled by dedicated sync/merge steps are excluded here to
+ * avoid double-processing. Fork-specific files and VCS metadata are also
+ * excluded.
  */
-const SOURCE_REPO_EXTRA_FILES = [
-  'skill-deps.json',
-  'core-agents.json',
-  'consumer-workflow.yml',
-  'sync.mjs',
-  'sync.sh',
-  'init-templates.sh',
-  '.copilot-deps.example.json',
-  'README.md',
-];
+const SOURCE_REPO_MIRROR_EXCLUDE = new Set([
+  // VCS — never mirror
+  '.git',
+  // Directories handled by dedicated sync/merge steps
+  '.github',
+  'agents',
+  'skills',
+  'skill-templates',
+  'docs',
+  'instruction-templates',
+  // Fork-specific — each fork maintains its own
+  '.copilot-deps.json',
+  'consumers.json',
+  'CLAUDE.md',
+  // npm / tooling metadata
+  'node_modules',
+  '.DS_Store',
+]);
 
 /**
  * Full-mirror sync for repos that are themselves agent source repos (e.g. a
@@ -617,26 +639,32 @@ function syncSourceRepo(sourceRoot, targetRoot) {
     }
   }
 
-  // 4. Mirror individual infrastructure files
+  // 4. Mirror individual infrastructure files (everything at root not excluded)
   const extraResult = { synced: [], unchanged: [] };
-  for (const file of SOURCE_REPO_EXTRA_FILES) {
-    const srcPath = join(sourceRoot, file);
-    if (!existsSync(srcPath)) continue;
-    const tgtPath = join(targetRoot, file);
+  for (const entry of readdirSync(sourceRoot)) {
+    if (SOURCE_REPO_MIRROR_EXCLUDE.has(entry)) continue;
+    const srcPath = join(sourceRoot, entry);
+    if (!statSync(srcPath).isFile()) continue;
+    const tgtPath = join(targetRoot, entry);
     const srcContent = readFileSync(srcPath);
     const tgtContent = existsSync(tgtPath) ? readFileSync(tgtPath) : null;
     if (tgtContent && srcContent.equals(tgtContent)) {
-      extraResult.unchanged.push(file);
+      extraResult.unchanged.push(entry);
     } else {
       writeFileSync(tgtPath, srcContent);
-      extraResult.synced.push(file);
+      extraResult.synced.push(entry);
     }
   }
 
-  // 5. Mirror docs/
+  // 5. Merge .github/ — workflows, CODEOWNERS, etc. (excluding repo-specific files)
+  const githubResult = mergeDirectory(sourceRoot, targetRoot, '.github', {
+    exclude: ['copilot-instructions.md', 'CODEOWNERS', 'agents', 'skills'],
+  });
+
+  // 6. Mirror docs/
   const docsResult = syncDirectory(sourceRoot, targetRoot, 'docs');
 
-  // 6. Mirror instruction-templates/
+  // 7. Mirror instruction-templates/
   const instructionTemplatesResult = syncDirectory(
     sourceRoot,
     targetRoot,
@@ -648,6 +676,7 @@ function syncSourceRepo(sourceRoot, targetRoot) {
     skillsRootResult,
     templateResult,
     extraResult,
+    githubResult,
     docsResult,
     instructionTemplatesResult,
   };
@@ -658,6 +687,7 @@ function printSourceRepoSummary({
   skillsRootResult,
   templateResult,
   extraResult,
+  githubResult,
   docsResult,
   instructionTemplatesResult,
 }) {
@@ -718,6 +748,25 @@ function printSourceRepoSummary({
     console.log('  (none found in source)');
   }
 
+  // .github/ (merged — fork files preserved)
+  console.log('\n.github/ (workflows, CODEOWNERS, etc.):');
+  if (githubResult.added.length) {
+    githubResult.added.forEach((f) => console.log(`  ✅ ${f} (added)`));
+  }
+  if (githubResult.updated.length) {
+    githubResult.updated.forEach((f) => console.log(`  🔄 ${f} (updated)`));
+  }
+  if (githubResult.unchanged.length) {
+    console.log(`  – ${githubResult.unchanged.length} file(s) unchanged`);
+  }
+  if (
+    githubResult.added.length === 0 &&
+    githubResult.updated.length === 0 &&
+    githubResult.unchanged.length === 0
+  ) {
+    console.log('  (none found in source)');
+  }
+
   // Docs
   console.log('\nDocs (docs/):');
   if (docsResult.synced.length) {
@@ -752,7 +801,10 @@ function printSourceRepoSummary({
   }
 
   // Infrastructure Files
-  const REVIEW_FILES = new Set(['.copilot-deps.example.json']);
+  const REVIEW_FILES = new Set([
+    '.copilot-deps.example.json',
+    '.copilot-deps.source.example.json',
+  ]);
   console.log('\nInfrastructure Files:');
   if (extraResult.synced.length === 0 && extraResult.unchanged.length === 0) {
     console.log('  (no files found)');

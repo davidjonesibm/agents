@@ -37,19 +37,15 @@ Use this approach when:
 
 In source-repo mode (`"type": "source"`), `sync.mjs` pulls upstream content into your fork — adding and updating upstream files while **preserving your custom content**:
 
-| What Gets Synced               | Target in Fork           | Behavior                                                      |
-| ------------------------------ | ------------------------ | ------------------------------------------------------------- |
-| `agents/`                      | `agents/`                | **Merged** — upstream added/updated, fork-only agents kept    |
-| `skills/`                      | `skills/`                | **Merged** — upstream added/updated, fork-only skills kept    |
-| All agents → `.github/agents/` | `.github/agents/`        | For Copilot discovery if the fork uses agents locally         |
-| `skill-templates/`             | `skill-templates/`       | Full overwrite — enables scaffolding for the fork's consumers |
-| `skill-deps.json`              | `skill-deps.json`        | Fork can extend its own dependency graph                      |
-| `core-agents.json`             | `core-agents.json`       | Kept in sync for reference                                    |
-| `consumer-workflow.yml`        | `consumer-workflow.yml`  | Fork can offer this to its consumers                          |
-| `sync.mjs` + `sync.sh`         | root                     | Fork ships the same sync tooling                              |
-| `init-templates.sh`            | root                     | Instruction template scaffolding script                       |
-| `docs/`                        | `docs/`                  | Full overwrite of reference docs                              |
-| `instruction-templates/`       | `instruction-templates/` | Full overwrite                                                |
+| What Gets Synced         | Target in Fork           | Behavior                                                                                            |
+| ------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------- |
+| `agents/`                | `agents/`                | **Merged** — upstream added/updated, fork-only agents kept                                          |
+| `skills/`                | `skills/`                | **Merged** — upstream added/updated, fork-only skills kept                                          |
+| `.github/`               | `.github/`               | **Merged** — workflows, CODEOWNERS, etc. (excludes `copilot-instructions.md`, `agents/`, `skills/`) |
+| `skill-templates/`       | `skill-templates/`       | Full overwrite — enables scaffolding for the fork's consumers                                       |
+| `docs/`                  | `docs/`                  | Full overwrite of reference docs                                                                    |
+| `instruction-templates/` | `instruction-templates/` | Full overwrite                                                                                      |
+| All other root files     | root                     | Auto-mirrored (excludes `.copilot-deps.json`, `consumers.json`, `CLAUDE.md`)                        |
 
 **Important:** `excludeAgents` and `skills` fields are ignored in source-repo mode.
 
@@ -94,8 +90,12 @@ org-agent-repo/
 │   └── local-routing/                ← from upstream (fork customizes)
 ├── .copilot-deps.json                ← type: source
 ├── consumers.json                    ← fork's own consumer list
+├── init-templates.mjs                ← from upstream
+├── init-templates.sh                 ← from upstream
 ├── install.mjs                       ← from upstream
-└── sync.mjs                          ← from upstream
+├── install.sh                        ← from upstream
+├── sync.mjs                          ← from upstream
+└── sync.sh                           ← from upstream
 ```
 
 ### 4. Configure Downstream Distribution
