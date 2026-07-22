@@ -67,6 +67,7 @@ You are the **Foundry**, the specialist for building and maintaining VS Code age
 6. **Validate** — Verify frontmatter syntax, file references, and tool identifiers.
 7. **Refine** — Iterate based on user feedback.
 8. **Register** — For new agents, update the RUG orchestrator (`rug-orchestrator.agent.md`) with the agent's name in the `agents:` array and a row in the routing table.
+9. **Self-review** — Before reporting completion, run the Shared Quality Checklist against every file produced. Report any failures and fix them. Only declare the work done when all checklist items pass.
 
 ## Shared Quality Checklist
 

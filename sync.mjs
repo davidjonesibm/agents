@@ -594,26 +594,8 @@ function syncSourceRepo(sourceRoot, targetRoot) {
   // 1. Merge agents/ — adds/updates upstream agents, preserves fork-only agents
   const agentsRootResult = mergeDirectory(sourceRoot, targetRoot, 'agents');
 
-  // Also sync any agents still in .github/agents/ into target .github/agents/
-  const allAgentNames = new Set();
-  for (const loc of AGENT_LOCATIONS) {
-    for (const f of listFiles(join(sourceRoot, loc), (f) =>
-      f.endsWith('.agent.md'),
-    )) {
-      allAgentNames.add(f.replace(/\.agent\.md$/, ''));
-    }
-  }
-  const agentResult = syncAgents(sourceRoot, targetRoot, allAgentNames);
-
   // 2. Merge skills/ — adds/updates upstream skills, preserves fork-only skills
   const skillsRootResult = mergeDirectory(sourceRoot, targetRoot, 'skills');
-
-  // Also sync any skills still in .github/skills/ into target .github/skills/
-  const ghSkillNames = listDirectories(join(sourceRoot, '.github', 'skills'));
-  const skillResult =
-    ghSkillNames.length > 0
-      ? syncSkills(sourceRoot, targetRoot, ghSkillNames)
-      : { synced: [], unchanged: [], notFound: [] };
 
   // 3. Mirror skill-templates/ in full (always overwrite)
   const templateResult = { synced: [], unchanged: [] };
@@ -662,9 +644,7 @@ function syncSourceRepo(sourceRoot, targetRoot) {
 
   return {
     agentsRootResult,
-    agentResult,
     skillsRootResult,
-    skillResult,
     templateResult,
     extraResult,
     docsResult,
@@ -674,9 +654,7 @@ function syncSourceRepo(sourceRoot, targetRoot) {
 
 function printSourceRepoSummary({
   agentsRootResult,
-  agentResult,
   skillsRootResult,
-  skillResult,
   templateResult,
   extraResult,
   docsResult,
@@ -703,28 +681,6 @@ function printSourceRepoSummary({
     console.log('  (none found in source)');
   }
 
-  // Agents (.github/agents/)
-  console.log('\nAgents (→ .github/agents/):');
-  if (agentResult.added.length) {
-    console.log(`  Added (${agentResult.added.length}):`);
-    agentResult.added.forEach((f) => console.log(`    ✅ ${f}`));
-  }
-  if (agentResult.updated.length) {
-    console.log(`  Updated (${agentResult.updated.length}):`);
-    agentResult.updated.forEach((f) => console.log(`    🔄 ${f}`));
-  }
-  if (agentResult.removed.length) {
-    console.log(`  Removed (${agentResult.removed.length}):`);
-    agentResult.removed.forEach((f) => console.log(`    ❌ ${f}`));
-  }
-  if (
-    agentResult.added.length === 0 &&
-    agentResult.updated.length === 0 &&
-    agentResult.removed.length === 0
-  ) {
-    console.log('  (no changes)');
-  }
-
   // Skills (root merge)
   console.log('\nSkills (skills/ → skills/):');
   if (skillsRootResult.added.length) {
@@ -742,22 +698,6 @@ function printSourceRepoSummary({
     skillsRootResult.unchanged.length === 0
   ) {
     console.log('  (none found in source)');
-  }
-
-  // Skills (.github/skills/)
-  console.log('\nSkills (→ .github/skills/):');
-  if (skillResult.synced.length) {
-    skillResult.synced.forEach((s) =>
-      console.log(`  ✅ ${s.name} → ${s.dest}`),
-    );
-  }
-  if (skillResult.notFound.length) {
-    skillResult.notFound.forEach((s) =>
-      console.log(`  ⚠️ ${s} — not found in source repo`),
-    );
-  }
-  if (skillResult.synced.length === 0 && skillResult.notFound.length === 0) {
-    console.log('  (no changes)');
   }
 
   // Skill Templates
@@ -1132,8 +1072,6 @@ function main() {
         'Syncing all agents, skills, templates, and infrastructure …',
       );
       const results = syncSourceRepo(tmp, cwd);
-      console.log('Updating RUG agent roster …');
-      updateRugAgentRoster(cwd);
       printSourceRepoSummary(results);
       suggestMoveFromGitHub(cwd);
       checkSyncShOutdated(tmp, cwd);
