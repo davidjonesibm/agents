@@ -17,12 +17,24 @@ Centralized distribution system for VS Code Copilot agent definitions and skills
 
 ---
 
-## Quick Start (Global Install)
+## Quick Start (Global Install agents and skills)
 
-```sh
-node install.mjs                          # copilot only
-node install.mjs --targets copilot,claude # both targets
-```
+1. clone/download [install.sh](./install.sh)
+1. run
+   ```sh
+   chmod +x install.sh
+   ./install.sh                              # copilot target only
+   ./install.sh --targets copilot,claude     # both targets
+   ```
+
+To add instruction templates to a repo
+
+1. add [init-templates.sh](./init-templates.sh) to the repo root
+1. run
+   ```sh
+   chmod +x init-templates.sh
+   ./init-templates.sh
+   ```
 
 See [docs/global-install.md](docs/global-install.md) for full details.
 
@@ -38,7 +50,9 @@ agent-repo/
 ├── instruction-templates/ ← Token-optimized .instructions.md templates (repo-specific)
 ├── docs/                  ← Setup guides and token optimization theory
 ├── install.mjs            ← Global installer (→ ~/.copilot, ~/.claude)
-├── init-templates.sh      ← Scaffold instruction templates into any repo
+├── install.sh             ← Shell wrapper that clones + runs install.mjs
+├── init-templates.mjs     ← Instruction template scaffolding logic
+├── init-templates.sh      ← Shell wrapper that clones + runs init-templates.mjs
 ├── sync.mjs               ← Repo sync script (for consumer/source-fork modes)
 ├── sync.sh                ← Shell wrapper that clones + runs sync.mjs
 ├── skill-deps.json        ← Agent → skill dependency declarations
