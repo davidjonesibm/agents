@@ -583,6 +583,7 @@ const SOURCE_REPO_EXTRA_FILES = [
   'sync.sh',
   'init-templates.sh',
   '.copilot-deps.example.json',
+  'README.md',
 ];
 
 /**
@@ -766,6 +767,22 @@ function printSourceRepoSummary({
   }
 
   console.log('\n────────────────────────────────────────────\n');
+
+  // Prominent README.md warning
+  if (extraResult.synced.includes('README.md')) {
+    const bar = '═'.repeat(64);
+    const pad = (s) => `║  ${s.padEnd(60)}  ║`;
+    console.log(`╔${bar}╗`);
+    console.log(pad('⚠️  README.md WAS UPDATED FROM UPSTREAM'));
+    console.log(`║${'─'.repeat(64)}║`);
+    console.log(pad("Your fork's README.md has been overwritten with the"));
+    console.log(pad('upstream version. If you had fork-specific content'));
+    console.log(pad('(custom repo name, URLs, setup instructions, etc.),'));
+    console.log(pad('review the file and re-apply your customizations.'));
+    console.log(`║${' '.repeat(64)}║`);
+    console.log(pad('  git diff README.md'));
+    console.log(`╚${bar}╝\n`);
+  }
 }
 
 // ---------------------------------------------------------------------------
