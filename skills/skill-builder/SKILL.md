@@ -28,12 +28,13 @@ When editing an existing skill, load only the relevant reference files for the c
 - **No hallucinated APIs** — if Context7 or docs don't confirm it exists, don't include it.
 - **Version-pinned** — always state which version the skill targets.
 - **Cross-referenced** — if a pattern in `patterns.md` has performance implications, mention "see also `references/performance.md`".
+- **Token-budget-aware** — SKILL.md body ≤ 24 KB; move code examples and deep-dives to `references/`. Each reference file loaded costs tokens only when explicitly read. See the [`token-optimization`](../token-optimization/SKILL.md) skill for the progressive loading model and file sizing guidelines.
 
 ## Constraints
 
 - **Never invent APIs or features** that aren't confirmed by documentation.
 - **Never include rules you aren't confident about** — omit rather than guess.
-- **Never create a monolithic single-file skill** — always split into reference files.
+- **Never create a monolithic single-file skill** — always split into reference files. This is both a structural rule and a token cost rule — a 40 KB monolithic SKILL.md loads 10,000 tokens on every invocation; split into body + references, the body costs ~2,000 tokens and references load only on demand.
 - **Never duplicate the same rule in multiple reference files** — cross-reference instead.
 - **Always use Context7 first** for library/framework skills — fall back to web fetch only when Context7 lacks coverage.
 

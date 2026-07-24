@@ -6,10 +6,32 @@
         "type": "bundled"
       },
       {
+        "name": "token-optimization",
+        "type": "bundled",
+        "location": "skills/token-optimization",
+        "description": "Token budget management, model selection strategy, and cost-efficiency patterns for multi-agent orchestration"
+      },
+      {
+        "name": "work-planning",
+        "type": "bundled",
+        "location": "skills/work-planning",
+        "description": "Three-phase pipeline (ingest/plan/execute) for producing T3-ready execution plans that maximize cheap-model dispatch"
+      },
+      {
         "name": "local-routing",
         "type": "scaffold",
         "location": ".github/skills/local-routing",
         "description": "Repo-specific routing overrides for the RUG orchestrator — customized per consumer, never overwritten by sync"
+      }
+    ]
+  },
+  "software-engineer": {
+    "skills": [
+      {
+        "name": "work-planning",
+        "type": "bundled",
+        "location": "skills/work-planning",
+        "description": "Loaded dynamically when SE is asked to produce plans (not implement)"
       }
     ]
   },

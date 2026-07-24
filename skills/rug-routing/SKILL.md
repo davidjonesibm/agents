@@ -35,14 +35,15 @@ This skill is read by the **RUG orchestrator** at the start of every session. It
 
 ## 1. Agent Roster
 
-These 4 agents are always present in every consumer repo.
+These 5 agents are always present in every consumer repo.
 
 | #   | Agent                 | Domain                       | When to Route                                                                                                                                                                                              | Skills Loaded                                     |
 | --- | --------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| 1   | **RUG**               | Orchestration                | The orchestrator itself. Pure delegation — never does implementation work.                                                                                                                                 | rug-routing (this file)                           |
+| 1   | **RUG**               | Orchestration                | The orchestrator itself. Pure delegation — never does implementation work.                                                                                                                                 | rug-routing (this file), token-optimization       |
 | 2   | **Foundry**           | Agent & skill infrastructure | ALL work on agent files (`.agent.md`, `.instructions.md`, `.prompt.md`, `copilot-instructions.md`, `AGENTS.md`) AND skill packages (`SKILL.md` + `references/`). Creation, editing, rebuilding, debugging. | agent-builder, skill-builder (loaded dynamically) |
-| 3   | **Software Engineer** | Implementation               | All implementation, testing, code review, architecture design, and bug diagnosis. Loads domain skills dynamically.                                                                                         | Framework skills loaded dynamically per task      |
-| 4   | **Context7-Expert**   | Research                     | Library/framework documentation lookup via Context7 MCP. Researching APIs, checking latest syntax, finding best practices. Read-only — always run BEFORE implementation when APIs are unfamiliar.          | — (MCP-based)                                     |
+| 3   | **Software Engineer** | Implementation (Tier 2)      | Implementation requiring judgment, testing, code review, architecture design, and bug diagnosis. Loads domain skills dynamically.                                                                          | Framework skills loaded dynamically per task      |
+| 4   | **Haiku Engineer**    | Execution (Tier 3)           | Well-specified single-concern tasks: file creation from patterns, mechanical edits, test writing from clear specs, boilerplate, simple validation. Cost-efficient execution without design decisions.      | None (follows explicit specs only)                |
+| 5   | **Context7-Expert**   | Research                     | Library/framework documentation lookup via Context7 MCP. Researching APIs, checking latest syntax, finding best practices. Read-only — always run BEFORE implementation when APIs are unfamiliar.          | — (MCP-based)                                     |
 
 > **Optional agents**: Consumers can install Product Owner, App Store Deployment Expert, and CI Monitor Subagent. When installed, add their routing rules to `local-routing/SKILL.md`.
 
@@ -68,11 +69,13 @@ When a task references specific files, use this table to select the agent.
 | Phase                                                          | Route To              | Notes                                                                              |
 | -------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
 | **Research** — library docs, API lookup, best practices        | **Context7-Expert**   | Always route here BEFORE implementation when library/framework knowledge is needed |
-| **Implementation** — writing production code                   | **Software Engineer** | Handles all languages, frameworks, and domains                                     |
-| **Testing** — writing or fixing tests                          | **Software Engineer** | Unit, integration, e2e — all test work stays with Software Engineer                |
+| **Implementation (complex)** — multi-file, design decisions    | **Software Engineer** | Handles all languages, frameworks, and domains requiring judgment                  |
+| **Implementation (mechanical)** — single-file, well-specified  | **Haiku Engineer**    | File creation from patterns, boilerplate, mechanical edits, clear specs            |
+| **Testing (design)** — choosing what to test, mock strategies  | **Software Engineer** | Judgment required on scope and approach                                            |
+| **Testing (execution)** — writing tests from clear specs       | **Haiku Engineer**    | When function signatures, inputs, and expected outputs are fully specified         |
 | **Review** — post-implementation quality check                 | **Software Engineer** | Code review is internal — RUG must NOT launch a separate reviewer agent            |
 | **Architecture** — design decisions, ADRs, system design       | **Software Engineer** | Handles architecture alongside implementation                                      |
-| **Validation** — type-check, lint, build verification          | **Software Engineer** | Or Context7-Expert for library API verification                                    |
+| **Validation** — type-check, lint, build verification          | **Haiku Engineer**    | Binary pass/fail checks; no judgment needed                                        |
 | **Agent/skill infrastructure** — `.agent.md`, `SKILL.md`, etc. | **Foundry**           | Overrides all other routing for these file types                                   |
 
 ---
@@ -92,11 +95,14 @@ When a task references specific files, use this table to select the agent.
 
 Shows which core agents can hand off to which. A ✅ means the agent in the row can initiate a handoff to the agent in the column.
 
-| From ↓ \ To →         | Context7 | SW Engineer | Foundry |
-| --------------------- | -------- | ----------- | ------- |
-| **Context7-Expert**   | —        | ✅          | —       |
-| **Software Engineer** | ✅       | —           | —       |
-| **Foundry**           | ✅       | —           | —       |
+| From ↓ \ To →         | Context7 | SW Engineer | Haiku Engineer | Foundry |
+| --------------------- | -------- | ----------- | -------------- | ------- |
+| **Context7-Expert**   | —        | ✅          | ✅             | —       |
+| **Software Engineer** | ✅       | —           | —              | —       |
+| **Haiku Engineer**    | —        | —           | —              | —       |
+| **Foundry**           | ✅       | —           | —              | —       |
+
+> **Note:** Haiku Engineer does not hand off — it either completes or reports failure back to RUG for escalation. RUG handles all tier escalation directly.
 
 > **Extending**: When optional agents are installed, add their handoff rows and columns in `local-routing/SKILL.md`.
 
@@ -128,3 +134,9 @@ When a task involves unfamiliar library/framework APIs, route to **Context7-Expe
 ### Override 3: No Separate Code Reviewer
 
 **Software Engineer handles code review internally.** RUG must NOT launch a separate reviewer agent after implementation. If a review is requested, route it directly to Software Engineer.
+
+### Override 4: Prefer Cheapest Effective Tier
+
+**Default to Haiku Engineer (T3) for any task that meets the T3 eligibility criteria.** Only escalate to Software Engineer (T2) when the task requires judgment, design decisions, or multi-concern reasoning. See the `token-optimization` skill for the full decision framework.
+
+This is a cost-efficiency override: using Software Engineer for mechanical tasks is token waste. If the plan is well-constructed with explicit specs, Haiku Engineer is the correct choice.

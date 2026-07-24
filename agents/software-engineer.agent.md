@@ -5,7 +5,6 @@ description: >-
 tools:
   [
     'search/codebase',
-    'search/changes',
     'search/fileSearch',
     'search/usages',
     'search/textSearch',
@@ -22,7 +21,6 @@ tools:
     'execute/createAndRunTask',
     'execute/testFailure',
     'vscode/extensions',
-    'vscode/getProjectSetupInfo',
     'vscode/runCommand',
     'vscode/askQuestions',
     'web/fetch',
@@ -96,6 +94,14 @@ model: Claude Sonnet 4.6 (copilot)
 > | `xunit` in .csproj or `using Xunit` statements | [xunit-v3-pro](../skills/xunit-v3-pro/SKILL.md)                           |
 > | `Testcontainers` in .csproj                    | [testcontainers-dotnet-pro](../skills/testcontainers-dotnet-pro/SKILL.md) |
 > | `Respawn` in .csproj                           | [respawn-pro](../skills/respawn-pro/SKILL.md)                             |
+>
+> **Planning (contextual — load when asked to plan, decompose, or produce execution specs)**
+>
+> | Detect                                                                        | Skill                                             |
+> | ----------------------------------------------------------------------------- | ------------------------------------------------- |
+> | Task is "plan only" (orchestrator says produce plan, don't implement)         | [work-planning](../skills/work-planning/SKILL.md) |
+> | Lift-and-shift or migration requiring ingestion of legacy code                | [work-planning](../skills/work-planning/SKILL.md) |
+> | Decomposing requirements into implementation tasks for cheaper model dispatch | [work-planning](../skills/work-planning/SKILL.md) |
 >
 > Load **every** matching skill. Follow loaded skill conventions for all framework-specific decisions.
 

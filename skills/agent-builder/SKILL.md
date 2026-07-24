@@ -30,6 +30,7 @@ If doing a partial review, load only the relevant reference files.
 - Write **imperative, unambiguous instructions** — "Always do X", "Never do Y".
 - Include concrete output format specifications and examples.
 - After creating or renaming an agent, register it in the RUG orchestrator (`agents:` array + decision matrix).
+- **Size the agent body for token efficiency** — the body loads every turn within the agent's session. Keep specialist agents 2–6 KB and orchestrators 8–16 KB. Move domain knowledge to skills rather than inlining it. See the [`token-optimization`](../token-optimization/SKILL.md) skill for budget targets and cache architecture.
 
 ## Requirements Gathering Checklist
 
@@ -54,6 +55,7 @@ Before finalizing an agent file, verify:
 - [ ] Handoffs defined (if part of a workflow)
 - [ ] Consistent with VS Code agent conventions
 - [ ] RUG orchestrator updated — agent registered in `agents:` array and decision matrix
+- [ ] **Body size within budget** — 2–6 KB for specialists, 8–16 KB for orchestrators (see `token-optimization` skill for sizing targets and cache breakpoint thresholds)
 
 ## Output Format
 
