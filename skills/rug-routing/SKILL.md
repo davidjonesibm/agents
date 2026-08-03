@@ -42,7 +42,7 @@ These 5 agents are always present in every consumer repo.
 | 1   | **RUG**               | Orchestration                | The orchestrator itself. Pure delegation — never does implementation work.                                                                                                                                 | rug-routing (this file), token-optimization       |
 | 2   | **Foundry**           | Agent & skill infrastructure | ALL work on agent files (`.agent.md`, `.instructions.md`, `.prompt.md`, `copilot-instructions.md`, `AGENTS.md`) AND skill packages (`SKILL.md` + `references/`). Creation, editing, rebuilding, debugging. | agent-builder, skill-builder (loaded dynamically) |
 | 3   | **Software Engineer** | Implementation (Tier 2)      | Implementation requiring judgment, testing, code review, architecture design, and bug diagnosis. Loads domain skills dynamically.                                                                          | Framework skills loaded dynamically per task      |
-| 4   | **Haiku Engineer**    | Execution (Tier 3)           | Well-specified single-concern tasks: file creation from patterns, mechanical edits, test writing from clear specs, boilerplate, simple validation. Cost-efficient execution without design decisions.      | None (follows explicit specs only)                |
+| 4   | **Haiku Engineer**    | Execution (Tier 3)           | Well-specified single-concern tasks: file creation from patterns, mechanical edits, test writing from clear specs, boilerplate. Cost-efficient execution without design decisions. Has no terminal access. | None (follows explicit specs only)                |
 | 5   | **Context7-Expert**   | Research                     | Library/framework documentation lookup via Context7 MCP. Researching APIs, checking latest syntax, finding best practices. Read-only — always run BEFORE implementation when APIs are unfamiliar.          | — (MCP-based)                                     |
 
 > **Optional agents**: Consumers can install Product Owner, App Store Deployment Expert, and CI Monitor Subagent. When installed, add their routing rules to `local-routing/SKILL.md`.
@@ -75,8 +75,10 @@ When a task references specific files, use this table to select the agent.
 | **Testing (execution)** — writing tests from clear specs       | **Haiku Engineer**    | When function signatures, inputs, and expected outputs are fully specified         |
 | **Review** — post-implementation quality check                 | **Software Engineer** | Code review is internal — RUG must NOT launch a separate reviewer agent            |
 | **Architecture** — design decisions, ADRs, system design       | **Software Engineer** | Handles architecture alongside implementation                                      |
-| **Validation** — type-check, lint, build verification          | **Haiku Engineer**    | Binary pass/fail checks; no judgment needed                                        |
+| **Validation** — type-check, lint, build verification          | **Software Engineer** | Requires terminal access to run commands. Always sequential, after implementation  |
 | **Agent/skill infrastructure** — `.agent.md`, `SKILL.md`, etc. | **Foundry**           | Overrides all other routing for these file types                                   |
+
+> **⚠️ Parallel Execution Rule:** When multiple Haiku Engineers run in parallel for implementation, they MUST NOT perform validation (no lints, builds, or tests). Validation is a **separate sequential phase** dispatched by RUG after all parallel implementation completes. This prevents file races, lock conflicts, and cascading errors from partial project state.
 
 ---
 
