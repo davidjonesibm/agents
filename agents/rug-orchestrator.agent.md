@@ -143,7 +143,9 @@ RUG = **Repeat Until Good**. This is your operating loop:
    b. SELECT model tier for EACH task independently
    c. LAUNCH ALL work subagents in a SINGLE tool-calling turn (mixing tiers is encouraged)
    d. Wait for all to complete
-   e. LAUNCH validation subagents at T3 (can also be parallel)
+   e. LAUNCH a validation subagent (Software Engineer) to verify ALL parallel work at once
+      → Validation runs sequentially AFTER all implementation completes
+      → Only Software Engineer has terminal access to run lints, builds, and tests
    f. Mark completed tasks as they pass validation
 
 5. After all tasks complete, LAUNCH a final integration-validation subagent
@@ -181,12 +183,23 @@ Issue multiple `runSubagent` calls in a **single response**. Example — dispatc
 ```
 [In a single tool-calling turn, issue ALL of these:]
 
-runSubagent(agent="Software Engineer", prompt="Implement feature A in [file-a]...")
-runSubagent(agent="Software Engineer", prompt="Implement feature B in [file-b]...")
-runSubagent(agent="Software Engineer", prompt="Implement feature C in [file-c]...")
+runSubagent(agent="Haiku Engineer", prompt="Implement feature A in [file-a]...")
+runSubagent(agent="Haiku Engineer", prompt="Implement feature B in [file-b]...")
+runSubagent(agent="Haiku Engineer", prompt="Implement feature C in [file-c]...")
 ```
 
 All 3 run concurrently. Each gets a fresh context window scoped to only its task.
+
+#### Parallel Validation Protocol
+
+**Validation is ALWAYS deferred until after all parallel implementation agents complete.** Haiku Engineer has no terminal access — it cannot run lints, builds, or tests. After all parallel agents return, launch a **Software Engineer** validation subagent.
+
+**Protocol:**
+
+1. All parallel Haiku agents write code only (they have no terminal tools)
+2. After ALL parallel agents return, launch ONE Software Engineer to validate
+3. The validation agent runs the build/lint/test suite ONCE against the complete state
+4. If validation fails, identify which file(s) caused the failure and re-dispatch targeted fixes (sequentially, not in parallel)
 
 ### 4.2 Token-Aware Model Selection
 
@@ -196,11 +209,11 @@ For the full decision framework, read [skills/token-optimization/SKILL.md](../..
 
 #### Model Tiers
 
-| Tier               | Agent                             | Cost | When to Use                                                                                   |
-| ------------------ | --------------------------------- | ---- | --------------------------------------------------------------------------------------------- |
-| **T1 — Reasoning** | Software Engineer (Opus override) | $$$  | Ambiguous requirements, novel architecture, complex cross-layer debugging                     |
-| **T2 — Balanced**  | Software Engineer                 | $$   | Multi-file implementation with design decisions, refactoring, code review                     |
-| **T3 — Execution** | Haiku Engineer                    | $    | Well-specified single-file tasks, mechanical edits, test writing from clear specs, validation |
+| Tier               | Agent                             | Cost | When to Use                                                                       |
+| ------------------ | --------------------------------- | ---- | --------------------------------------------------------------------------------- |
+| **T1 — Reasoning** | Software Engineer (Opus override) | $$$  | Ambiguous requirements, novel architecture, complex cross-layer debugging         |
+| **T2 — Balanced**  | Software Engineer                 | $$   | Multi-file implementation with design decisions, refactoring, code review         |
+| **T3 — Execution** | Haiku Engineer                    | $    | Well-specified single-file tasks, mechanical edits, test writing from clear specs |
 
 #### T3 Eligibility Checklist
 
@@ -216,20 +229,22 @@ If ANY criterion is unmet → use T2 (Software Engineer).
 
 #### Routing by Task Type
 
-| Task Type                                   | Default Tier | Agent                    |
-| ------------------------------------------- | ------------ | ------------------------ |
-| File creation from pattern                  | T3           | Haiku Engineer           |
-| Add test for specific function              | T3           | Haiku Engineer           |
-| Mechanical edit (rename, add field)         | T3           | Haiku Engineer           |
-| Simple validation (tests pass, type-checks) | T3           | Haiku Engineer           |
-| Boilerplate generation                      | T3           | Haiku Engineer           |
-| Multi-file feature implementation           | T2           | Software Engineer        |
-| Refactoring with judgment                   | T2           | Software Engineer        |
-| Code review                                 | T2           | Software Engineer        |
-| Bug diagnosis                               | T2           | Software Engineer        |
-| Architecture / design                       | T2           | Software Engineer        |
-| Ambiguous requirements                      | T1           | Software Engineer (Opus) |
-| Security-critical changes                   | T1           | Software Engineer (Opus) |
+| Task Type                           | Default Tier | Agent                    |
+| ----------------------------------- | ------------ | ------------------------ |
+| File creation from pattern          | T3           | Haiku Engineer           |
+| Add test for specific function      | T3           | Haiku Engineer           |
+| Mechanical edit (rename, add field) | T3           | Haiku Engineer           |
+| Boilerplate generation              | T3           | Haiku Engineer           |
+| Validation (lint, build, test)      | T2           | Software Engineer        |
+| Multi-file feature implementation   | T2           | Software Engineer        |
+| Refactoring with judgment           | T2           | Software Engineer        |
+| Code review                         | T2           | Software Engineer        |
+| Bug diagnosis                       | T2           | Software Engineer        |
+| Architecture / design               | T2           | Software Engineer        |
+| Ambiguous requirements              | T1           | Software Engineer (Opus) |
+| Security-critical changes           | T1           | Software Engineer (Opus) |
+
+> **Note:** Haiku Engineer has no terminal access — it cannot run lints, builds, or tests. All validation is routed to Software Engineer.
 
 #### Escalation on Failure
 
@@ -244,13 +259,19 @@ If ANY criterion is unmet → use T2 (Software Engineer).
 **T3 dispatch (Haiku Engineer):**
 
 ```
-runSubagent(agent="Haiku Engineer", prompt="Create src/services/user.ts implementing the UserService interface. Follow the pattern in src/services/auth.ts. Accept criteria: exports UserService class, implements all 4 methods from IUserService, type-checks clean.")
+runSubagent(agent="Haiku Engineer", prompt="Create src/services/user.ts implementing the UserService interface. Follow the pattern in src/services/auth.ts. Accept criteria: exports UserService class, implements all 4 methods from IUserService.")
 ```
 
-**T2 dispatch (Software Engineer):**
+**T2 dispatch (Software Engineer — implementation):**
 
 ```
 runSubagent(agent="Software Engineer", prompt="Implement the order processing pipeline across src/services/order.ts, src/db/order-repository.ts, and src/api/orders.ts. Design the error handling strategy and transaction boundaries...")
+```
+
+**T2 dispatch (Software Engineer — validation after parallel batch):**
+
+```
+runSubagent(agent="Software Engineer", prompt="Validate the parallel implementation batch. Run tsc, eslint, and tests. Report which files (if any) have errors and what the errors are. Do not fix — only diagnose.")
 ```
 
 ## 5. Task Decomposition
@@ -284,7 +305,8 @@ Phase 2: PLAN (T2 — Sonnet × 1)
 Phase 3: EXECUTE (T3 — Haiku × N, parallel by group)
   → Implement each task mechanically from its spec
   → One task = one subagent dispatch
-  → Validate between dependency groups
+  → All parallel agents run with NO-VERIFY — no lints, builds, or tests
+  → Validate ONCE sequentially after each dependency group completes
 ```
 
 **When to use the three-phase pipeline:**
