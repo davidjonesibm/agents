@@ -434,6 +434,55 @@ This pattern ensures architecture context is available exactly when editing arch
 
 ## 6. Measurement & Monitoring
 
+### 6.0 Run the token audit
+
+VS Code does not record token counts, so `token-audit.mjs` reconstructs an estimate from the
+local session store using GitHub's Effective Tokens model:
+
+$$ET = m \times (1.0 \times I + 0.1 \times C + 4.0 \times O)$$
+
+where $m$ is the model multiplier (Haiku 0.25, Sonnet 1.0, Opus 5.0), $I$ is fresh input,
+$C$ is cached input, and $O$ is output. Output carries 4× weight because it is the most
+expensive token type; cache reads carry 0.1× because they are billed at roughly a tenth of
+fresh input.
+
+```sh
+node token-audit.mjs                 # last 30 days, Sonnet pricing
+node token-audit.mjs --days 7
+node token-audit.mjs --model opus    # what the same workload costs at Opus rates
+node token-audit.mjs --base 20000    # tune the fixed per-session overhead estimate
+```
+
+It reports the most expensive sessions, a per-repository breakdown, and two findings that
+drive most waste: cost concentrated in long threads, and cost concentrated in output volume.
+
+**Requires** `github.copilot.chat.localIndex.enabled` in VS Code settings.
+
+**Read it correctly — the `--base` value dominates short sessions.** `--base` is the fixed
+per-session overhead: system prompt + agent body + skill discovery block + tool schemas. It is
+charged as fresh input on turn one, then as a cache read on every later turn. If most of your
+sessions are 1–3 turns, this fixed cost is the majority of your spend, and the highest-value
+optimizations are **trimming agent bodies and pruning skills** — not managing conversation
+length. If most of your sessions are long, the reverse is true and thread hygiene matters more.
+
+Check which regime you are in before optimizing:
+
+```sh
+node token-audit.mjs --base 5000     # compare the totals
+node token-audit.mjs --base 20000    # a big gap means fixed overhead dominates
+```
+
+### 6.0.1 Ground truth
+
+The audit script is an estimate for spotting trends and outliers. For actual billed usage:
+
+- **<https://github.com/settings/billing>** → "AI usage" — real credits, by feature and model
+- **`/chronicle cost-tips`** in Copilot CLI — built-in analysis of your own session history
+
+Full per-request instrumentation (what GitHub built internally) requires an API proxy in front
+of the model calls. That is practical in CI, not on a desktop IDE — so treat the billing
+dashboard as truth and the audit script as your early-warning signal.
+
 ### 6.1 Estimating Your Token Budget
 
 Quick estimation from file sizes:

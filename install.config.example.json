@@ -1,0 +1,90 @@
+{
+  "_comment": "Copy to install.config.json (gitignored) and edit. Only includeSkills / includeAgents / excludeSkills / excludeAgents are read — every other key is ignored, so the profiles below are safe reference data.",
+
+  "_rules": [
+    "EMPTY include list = install everything. That is the default, so an untouched copy of this file changes nothing.",
+    "Non-empty include list = allowlist. Only those items install.",
+    "Exclude is applied after include, so you can take a profile minus one item.",
+    "Anything not selected is PRUNED from ~/.copilot on the next install — switching stacks is: swap the array, re-run.",
+    "Unknown names are reported as warnings, so typos will not silently drop a skill."
+  ],
+
+  "_locations": [
+    "<repo>/install.config.json — for local clones of this repo",
+    "~/.copilot/install.config.json — required if you install via install.sh (it clones to /tmp and deletes it)"
+  ],
+
+  "includeAgents": [],
+  "includeSkills": [],
+  "excludeAgents": [],
+  "excludeSkills": [],
+
+  "_profiles": {
+    "_usage": "Copy one array into 'includeSkills' above. Each profile already contains the _core entries.",
+
+    "_core": [
+      "agent-builder",
+      "skill-builder",
+      "rug-routing",
+      "token-optimization",
+      "work-planning"
+    ],
+
+    "dotnet": [
+      "agent-builder",
+      "skill-builder",
+      "rug-routing",
+      "token-optimization",
+      "work-planning",
+      "api-design-pro",
+      "coverlet-pro",
+      "dapper-pro",
+      "docker-pro",
+      "dotnet-migration",
+      "dotnet-server",
+      "insomnia-pro",
+      "mediatr-pro",
+      "postgres-pro",
+      "respawn-pro",
+      "testcontainers-dotnet-pro",
+      "xunit-v3-pro"
+    ],
+
+    "web": [
+      "agent-builder",
+      "skill-builder",
+      "rug-routing",
+      "token-optimization",
+      "work-planning",
+      "api-design-pro",
+      "caddy-pro",
+      "docker-pro",
+      "fastify-pro",
+      "insomnia-pro",
+      "link-workspace-packages",
+      "postgres-pro",
+      "pwa-pro",
+      "react-pro",
+      "recoil-pro",
+      "supabase-pro",
+      "tanstack-query-pro",
+      "vue-pro",
+      "zustand-pro"
+    ],
+
+    "mobile": [
+      "agent-builder",
+      "skill-builder",
+      "rug-routing",
+      "token-optimization",
+      "work-planning",
+      "android-kotlin-pro",
+      "api-design-pro",
+      "appium-wdio-pro",
+      "flutter-pro",
+      "mobile-uiux-pro",
+      "pocketbase-pro",
+      "swiftui-pro"
+    ]
+  }
+}

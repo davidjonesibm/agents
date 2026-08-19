@@ -40,6 +40,77 @@ See [docs/global-install.md](docs/global-install.md) for full details.
 
 ---
 
+## Global Instructions
+
+Files in `global-instructions/` install to the VS Code user prompts folder and apply in
+**every workspace on the machine** — no per-repo setup. `install.mjs` handles this
+automatically; skip it with `--no-instructions`.
+
+| Folder                   | Scope                   | Installed by        |
+| ------------------------ | ----------------------- | ------------------- |
+| `global-instructions/`   | Machine-wide, all repos | `install.mjs`       |
+| `instruction-templates/` | Per-repo scaffolding    | `init-templates.sh` |
+
+Currently ships [cost-control.instructions.md](global-instructions/cost-control.instructions.md) —
+failure budgets (stop after two attempts instead of looping), cost pushback on expensive
+requests, and output-padding prohibitions.
+
+Detected locations: `Code`, `Code - Insiders`, and `VSCodium` on macOS, Linux, and Windows.
+All detected flavours get the files. Override with `VSCODE_USER_DIR`.
+
+---
+
+## Trimming What Gets Installed
+
+Every installed skill contributes its `description` to the skill-discovery block, which is sent
+as **fresh input on the first turn of every session**. If most of your sessions are short, that
+fixed overhead is the largest single component of your token spend — so installing 36 skills
+when you only work in one stack is a real, recurring cost.
+
+Install only what you use:
+
+```sh
+node install.mjs --include-skills dotnet-server,xunit-v3-pro,dapper-pro
+```
+
+Or make it permanent with a config file:
+
+```sh
+cp install.config.example.json install.config.json   # local clone
+# or, if you install via install.sh:
+cp install.config.example.json ~/.copilot/install.config.json
+```
+
+The example ships with ready-made `dotnet`, `web`, and `mobile` profiles — copy one into
+`includeSkills`.
+
+**Selection rules:**
+
+| Config                        | Result                                          |
+| ----------------------------- | ----------------------------------------------- |
+| `includeSkills: []` (default) | Install **everything** — nothing changes        |
+| `includeSkills: [...]`        | Allowlist — only those install                  |
+| `excludeSkills: [...]`        | Applied **after** include — a profile minus one |
+
+Anything not selected is **pruned** from `~/.copilot` on the next install, so switching stacks
+is just: swap the array, re-run. Unknown names are reported as warnings rather than silently
+ignored, so a typo in an allowlist won't quietly drop a skill.
+
+Profiles are allowlists rather than denylists on purpose: with a denylist, every new skill added
+upstream leaks into every profile until someone remembers to exclude it in each one.
+
+| Location                         | Use when                                                  |
+| -------------------------------- | --------------------------------------------------------- |
+| `<repo>/install.config.json`     | You work from a local clone (gitignored)                  |
+| `~/.copilot/install.config.json` | You use `install.sh` — it clones to `/tmp` and deletes it |
+
+CLI flags override the config file. Run `node install.mjs --help` for all options.
+
+To measure the effect, see [token-audit.mjs](./token-audit.mjs) and
+[docs/token-optimization.md](docs/token-optimization.md).
+
+---
+
 ## Repository Structure
 
 ```
