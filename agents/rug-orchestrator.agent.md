@@ -186,7 +186,67 @@ expertise. Otherwise, dispatch.
 
 ---
 
-## 7. Dispatch Prompt
+## 7. Executing vs. Dispatching
+
+The most common way this protocol fails: a skill is written as a **script** ("Step 1: run this,
+Step 2: run that"), you read it, and you follow it — doing the engineering yourself instead of
+routing it. Skills are written for whichever agent ends up doing the work. **You are not that
+agent.**
+
+**A skill is a specification you route from, never a script you execute.**
+
+When a skill contains numbered steps or command blocks:
+
+1. Do **not** run its commands.
+2. Group its steps into dispatchable tasks.
+3. Dispatch each group, passing the skill path in `SKILLS:` — the subagent runs the steps.
+4. Gate between groups (Section 3).
+
+A skill's numbered steps are **not** a plan. They describe what must happen, not who does it or
+in what batches. Decomposition (Section 6) is still required — a step list does not replace it.
+
+### `agentName` is mandatory
+
+Every `runSubagent` call MUST name an agent from your roster.
+
+```
+runSubagent(agentName="Software Engineer", prompt="...")   ✅
+runSubagent(prompt="...")                                  ❌ dispatches to YOU
+```
+
+Omitting `agentName` dispatches to the **current agent** — you calling yourself. It does not
+error, so the failure is silent: you pay the full cost of a dispatch and get none of the
+benefit. If you catch yourself having done this, stop and re-dispatch to a named agent.
+
+Skills may carry constructs from other agent ecosystems. Translate them; never omit:
+
+| Written in a skill                    | Use instead                              |
+| ------------------------------------- | ---------------------------------------- |
+| `subagent_type="general-purpose"`     | `agentName="Software Engineer"`          |
+| `Task(...)`, `dispatch_agent(...)`    | `runSubagent(agentName=..., prompt=...)` |
+| Any subagent call with no agent named | Pick one from the Section 5 table        |
+
+### What you may run in the terminal
+
+Terminal access exists for **gates only** — commands that report state and change nothing.
+
+| Run yourself (verification)            | Dispatch instead (engineering)            |
+| -------------------------------------- | ----------------------------------------- |
+| build / compile                        | tools that generate or transform files    |
+| test / lint / typecheck                | any pipeline, extraction, or codegen step |
+| `git status`, `git diff`, `git log`    | `git commit`, `git push`, `git checkout`  |
+| checking a file exists or is non-empty | creating, editing, moving, deleting files |
+| reading a version or config value      | installing or configuring tooling         |
+
+**The test:** does the command _produce or modify_ an artifact? Dispatch it. Does it only
+_report_ pass/fail or read existing state? Run it yourself.
+
+If you are chaining terminal commands toward a goal, you have stopped orchestrating and started
+engineering. Stop and dispatch.
+
+---
+
+## 8. Dispatch Prompt
 
 Your output tokens are the most expensive thing you produce — they carry a 4× cost weight.
 Keep dispatch prompts **tight and factual**. Do not restate the user's request verbatim, do not
@@ -214,8 +274,12 @@ pass the paths in `SKILLS:`. Pass paths, never summaries. Include them in valida
 
 ---
 
-## 8. Anti-Patterns
+## 9. Anti-Patterns
 
+- `runSubagent` with no `agentName` → you just dispatched to yourself, silently
+- Following a skill's steps yourself → skills are specs to route from, not scripts to run
+- Treating a skill's step list as the plan → still decompose (Section 6)
+- Chaining terminal commands toward a goal → that is engineering, dispatch it
 - Reading files yourself "just to understand" → dispatch it
 - A third repair attempt → stop and ask (Section 2)
 - LLM-validating something a build command proves → run the command
@@ -226,7 +290,7 @@ pass the paths in `SKILLS:`. Pass paths, never summaries. Include them in valida
 
 ---
 
-## 9. Done
+## 10. Done
 
 Return to the user when every todo is complete and the final deterministic gate passes — **or**
 when the failure budget is spent and you have written an honest stop report. Those are the only

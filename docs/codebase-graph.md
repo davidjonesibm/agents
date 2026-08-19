@@ -22,6 +22,132 @@ came from replacing agent turns that were pure data-gathering with pre-computed 
 
 ---
 
+## Step 0 — Install graphify and make it reachable
+
+graphify is a **standalone CLI**, not a project dependency. Install it with an isolated tool
+installer so it is not coupled to any single project's interpreter:
+
+```bash
+uv tool install graphifyy       # preferred
+pipx install graphifyy          # alternative
+pip install --user graphifyy    # last resort
+```
+
+The package is `graphifyy`; the command is `graphify`. Confirm:
+
+```bash
+graphify --version
+```
+
+If that works, skip to Step 1.
+
+### Troubleshooting `command not found`
+
+Three causes, in the order worth checking.
+
+#### 1. It is not installed, or went into an environment you are not in
+
+Locate the binary:
+
+```bash
+# macOS / Linux
+find "$HOME" -name 'graphify' -type f -perm -u+x 2>/dev/null | head
+```
+
+```powershell
+# Windows PowerShell
+Get-ChildItem $HOME -Filter graphify* -Recurse -ErrorAction SilentlyContinue |
+  Select-Object -First 5 FullName
+```
+
+Nothing found → install it. Found → cause 2 or 3.
+
+#### 2. It is installed, but its directory is not on your PATH
+
+| Installer    | Typical bin directory                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| `uv tool`    | `~/.local/bin` · Windows: `%APPDATA%\uv\tools`                                             |
+| `pipx`       | `~/.local/bin` · Windows: `%USERPROFILE%\.local\bin`                                       |
+| `pip --user` | `~/.local/bin` · macOS: `~/Library/Python/<X.Y>/bin` · Windows: `%APPDATA%\Python\Scripts` |
+| virtualenv   | `<venv>/bin` (`<venv>\Scripts` on Windows) — only while activated                          |
+
+Easiest fix is to let the installer do it:
+
+```bash
+uv tool update-shell     # uv
+pipx ensurepath          # pipx
+```
+
+Or add it yourself, matching your shell:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc   # bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc    # zsh
+fish_add_path ~/.local/bin                                 # fish
+```
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  'Path', "$env:APPDATA\Python\Scripts;$env:Path", 'User')
+```
+
+Open a new terminal afterwards — PATH changes do not apply to running shells.
+
+#### 3. A version-manager shim is shadowing it
+
+This is the confusing one, because it looks intermittent — it fails in some directories and
+works in others. Version managers (pyenv, asdf, conda, mise) insert shim directories early in
+PATH. If graphify was installed under one interpreter version but a different version is
+active, the shim intercepts the call and fails:
+
+```
+pyenv: graphify: command not found
+The `graphify' command exists in these Python versions:
+  3.13.2
+```
+
+Usefully, the error names the version that actually has it. The active version differs because
+of a global setting, a directory-local pin (`.python-version`, `.tool-versions`), or an
+activated environment.
+
+Confirm a shim is winning — lower line number wins:
+
+```bash
+echo "$PATH" | tr ':' '\n' | grep -n -E 'shims|local/bin'
+```
+
+Three fixes, least invasive first:
+
+| Fix                       | How                                                                      | Scope            |
+| ------------------------- | ------------------------------------------------------------------------ | ---------------- |
+| Alias the real binary     | below                                                                    | Zero risk        |
+| Switch the active version | `pyenv shell <ver>` · `asdf shell python <ver>` · `conda activate <env>` | Current terminal |
+| Change the default        | `pyenv global <ver>` · `asdf global python <ver>`                        | Whole machine    |
+
+**Aliasing is recommended.** graphify has no reason to be bound to whichever interpreter your
+current project uses, and an alias cannot break anything else on the machine:
+
+```bash
+# 1. Find the real path (pyenv shown; adapt for your manager)
+ls "$(pyenv root)"/versions/*/bin/graphify
+
+# 2. Alias it in your shell rc (~/.zshrc, ~/.bashrc, ~/.config/fish/config.fish)
+echo "alias graphify='/full/path/from/step/1'" >> ~/.zshrc
+source ~/.zshrc
+```
+
+Changing the global default is the most fragile option — anything relying on the previous
+default interpreter silently starts using a different one. Prefer it only if the old default
+is genuinely unused.
+
+### Confirm before continuing
+
+```bash
+graphify --version
+```
+
+---
+
 ## Step 1 — Build the graph (once per repo, ~5–15 min)
 
 From the repo root:
@@ -88,7 +214,7 @@ Before reading source files to understand structure, read `graphify-out/wiki/ind
 and the relevant community article. Do not read more than 5 source files to answer a
 structural question — query the graph instead:
 
-    graphify query "how does order import handle retries" --budget 1500
+    graphify query "how does <subsystem> handle <behaviour>" --budget 1500
 
 Read source only when you need exact implementation detail, not for orientation.
 ```
@@ -181,10 +307,10 @@ Rule of thumb: CLI by default, MCP only when agents query the graph many times p
 ## Useful queries
 
 ```bash
-graphify query "what calls OrderImportService" --budget 1500
-graphify path "OrderController" "SqlOrderRepository"   # shortest path between two concepts
-graphify explain "GpasClient"                          # plain-language node explanation
-graphify query "trace the flow from ingress to persistence" --dfs
+graphify query "what calls <ClassOrFunction>" --budget 1500
+graphify path "<EntryPoint>" "<Dependency>"      # shortest path between two concepts
+graphify explain "<SymbolName>"                  # plain-language node explanation
+graphify query "trace the flow from <entry> to <store>" --dfs
 ```
 
 `query` defaults to BFS (broad context); `--dfs` traces one specific path. Use `--budget` on
@@ -194,13 +320,13 @@ anything an agent runs unattended.
 
 ## Rollout order
 
-Do not graph all 13 repos at once. Start where the pain is:
+Do not graph every repository at once. Start where the pain is:
 
 1. Pick the repo where agents most often flail or over-read.
 2. `graphify . --wiki` — inspect `GRAPH_REPORT.md` and sanity-check that it matches reality.
 3. Add the copilot-instructions block from Step 3A.
 4. Work in that repo for a week. Compare session lengths before and after.
-5. If it helps, roll out to the next two repos and add the CI refresh.
+5. If it helps, roll out to the next couple of repos and add the CI refresh.
 
 Graphs pay off most in large, unfamiliar, or high-churn repos. A small service you know cold
 will not benefit much — skip those.
