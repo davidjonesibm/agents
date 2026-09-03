@@ -1,0 +1,8 @@
+# Personal install profile — copy install.config.example.json to create it.
+install.config.json
+
+# Pre-computed codebase graph artifacts (see docs/codebase-graph.md)
+graphify-out/
+
+node_modules/
+.DS_Store

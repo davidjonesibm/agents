@@ -14,6 +14,7 @@ import {
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { updateRugAgentRoster as sharedUpdateRugAgentRoster } from './lib/rug-roster.mjs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -77,12 +78,6 @@ function listDirectories(dir, filter) {
     if (filter && !filter(f)) return false;
     return statSync(join(dir, f)).isDirectory();
   });
-}
-
-/** Extract the name: field from a YAML frontmatter body string. */
-function extractFrontmatterName(frontmatterBody) {
-  const match = frontmatterBody.match(/^name:\s*['"]?(.*?)['"]?\s*$/m);
-  return match ? match[1] : null;
 }
 
 /**
@@ -505,76 +500,7 @@ function checkLocalRoutingVersion(sourceRoot, targetRoot) {
 
 function updateRugAgentRoster(targetRoot) {
   const agentDir = join(targetRoot, '.github', 'agents');
-  const rugFile = join(agentDir, 'rug-orchestrator.agent.md');
-
-  if (!existsSync(rugFile)) return;
-
-  const rugContent = readFileSync(rugFile, 'utf-8');
-  const fmMatch = rugContent.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!fmMatch) {
-    console.log(
-      '  ⚠️  rug-orchestrator.agent.md has no frontmatter — skipping roster update',
-    );
-    return;
-  }
-
-  const rugName = extractFrontmatterName(fmMatch[1]);
-
-  // Collect names from all agent files in the consumer's agents directory
-  const agentFiles = listFiles(agentDir, (f) => f.endsWith('.agent.md'));
-  const agentNames = [];
-
-  for (const file of agentFiles) {
-    if (file === 'rug-orchestrator.agent.md') continue;
-
-    const content = readFileSync(join(agentDir, file), 'utf-8');
-    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    if (!match) continue;
-
-    const name = extractFrontmatterName(match[1]);
-    if (name && name !== rugName) {
-      agentNames.push(name);
-    }
-  }
-
-  const uniqueAgentNames = [...new Set(agentNames)].sort();
-
-  // Build the new agents field in flow-sequence format
-  let newAgentsField;
-  if (uniqueAgentNames.length === 0) {
-    newAgentsField = 'agents: []';
-  } else {
-    const items = uniqueAgentNames
-      .map((n) => `    '${n.replace(/'/g, "''")}',`)
-      .join('\n');
-    newAgentsField = `agents:\n  [\n${items}\n  ]`;
-  }
-
-  // Replace or add the agents field in frontmatter
-  const frontmatter = fmMatch[1];
-  const agentsRegex = /^agents:\s*\[[\s\S]*?\]/m;
-
-  let newFrontmatter;
-  if (agentsRegex.test(frontmatter)) {
-    newFrontmatter = frontmatter.replace(agentsRegex, newAgentsField);
-  } else {
-    newFrontmatter = frontmatter.trimEnd() + '\n' + newAgentsField;
-  }
-
-  const newContent = rugContent.replace(
-    /^---\r?\n[\s\S]*?\r?\n---/,
-    `---\n${newFrontmatter}\n---`,
-  );
-
-  writeFileSync(rugFile, newContent, 'utf-8');
-
-  if (uniqueAgentNames.length > 0) {
-    console.log(
-      `  ✅ Updated RUG agent roster: [${uniqueAgentNames.join(', ')}]`,
-    );
-  } else {
-    console.log('  ✅ Updated RUG agent roster: (no other agents found)');
-  }
+  sharedUpdateRugAgentRoster(agentDir);
 }
 
 // ---------------------------------------------------------------------------

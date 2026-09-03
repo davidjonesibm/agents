@@ -34,6 +34,11 @@ Use this decision table when an orchestrator selects which model to assign to a 
 | **Tier 2 — Balanced**  | Sonnet / GPT-4o     | $$   | Multi-file implementation with design decisions, code review, refactoring with judgment calls                   |
 | **Tier 3 — Execution** | Haiku / GPT-4o-mini | $    | Well-specified single-file tasks, mechanical edits, test writing from clear specs, file creation from templates |
 
+> **Tiers are model classes, not agent names.** An agent's model is fixed in its frontmatter, so
+> a tier that has no dedicated agent is reached by passing a `model` override on the `runSubagent`
+> call — e.g. dispatch the Tier 2 agent with an Opus model to get Tier 1 behaviour. Do not invent
+> agent names like `"Agent (Opus)"`; the dispatch will fail.
+
 ### Decision Criteria for Tier 3 (Cheap Model) Eligibility
 
 A task qualifies for Tier 3 when **ALL** of these are true:

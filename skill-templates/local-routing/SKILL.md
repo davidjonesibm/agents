@@ -1,10 +1,10 @@
 ---
 name: local-routing
-template-version: '1'
+template-version: '3'
 description: >-
-  Repo-specific routing overrides for the RUG orchestrator. Customizations here
-  take precedence over the canonical rug-routing rules synced from agent-repo.
-  Add file-pattern overrides, custom triage rules, and repo-specific routing preferences.
+  Repo-specific routing overrides and cost policy for the RUG orchestrator. Customizations
+  here take precedence over the canonical rug-routing rules synced from agent-repo.
+  Add cost-gate thresholds, file-pattern overrides, custom triage rules, and routing preferences.
 ---
 
 # ⚠️ STOP — Configure This File Before Continuing
@@ -57,6 +57,50 @@ Local routing is primarily useful for:
 2. Run the sync workflow to pull the agent definition into your repo
 3. Uncomment the corresponding rows in each section below
 4. Adjust file patterns, triage rules, and handoffs to match your repo structure
+
+---
+
+## 0. Cost Policy
+
+Overrides the RUG orchestrator's default cost gate. RUG stops and asks for confirmation when a
+threshold trips. Raise these if the gate interrupts you too often; lower them to be more frugal.
+
+| Key                    | Default | Meaning                                          |
+| ---------------------- | ------- | ------------------------------------------------ |
+| `maxFilesPerDispatch`  | 15      | Files a single subagent may read before RUG asks |
+| `maxFilesTouched`      | 8       | Files one task may modify before RUG asks        |
+| `requireApprovalForT1` | true    | Ask before any Opus-tier escalation              |
+| `gate`                 | on      | Set to `off` to disable the cost gate entirely   |
+
+> The failure budget (two attempts, then stop or escalate) is fixed in `rug-orchestrator.agent.md`
+> and is not configurable here — RUG does not read a `repairAttempts` key.
+
+> There is deliberately **no** cap on subagent count. Dispatch count is not a cost — capping it
+> pushes the orchestrator into doing the work itself, which is the most expensive outcome and
+> produces the worst results.
+
+**Active policy for this repo** — edit the values below; RUG honors them verbatim:
+
+```yaml
+maxFilesPerDispatch: 15
+maxFilesTouched: 8
+requireApprovalForT1: true
+gate: on
+```
+
+**Tuning guidance:**
+
+- Gate firing constantly on a large monorepo → raise `maxFilesPerDispatch` to 25–30 first.
+- Long refactors that legitimately span many files → raise `maxFilesTouched`, keep the rest.
+- Exploratory session where you accept the cost → tell RUG "just do it" for a one-session `gate: off`.
+
+**Pre-computed codebase graph** (optional). If this repo has a real generated artifact — e.g. a
+`graphify-out/` tree — name its path here and RUG will read it instead of ingesting source files
+to orient itself. Leave this unset otherwise; do not point it at documentation:
+
+```yaml
+# codebaseGraph: graphify-out/
+```
 
 ---
 

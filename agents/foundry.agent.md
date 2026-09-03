@@ -16,13 +16,13 @@ tools:
     io.github.upstash/context7/*,
     todo,
   ]
-agents: ['Context7-Expert']
+agents: []
 handoffs:
   - label: Review Agent/Skill
     agent: Software Engineer
     prompt: Review the agent/skill I just created for completeness, accuracy, and format adherence.
     send: false
-model: Claude Sonnet 4.6 (copilot)
+model: Claude Sonnet 5 (copilot)
 ---
 
 # Foundry — Agent & Skill Infrastructure Specialist
