@@ -25,14 +25,12 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import {
+  findSessionStoreDb,
+  resolveSessionStoreDbPaths,
+} from './lib/vscode-paths.mjs';
 
-const DB = join(
-  homedir(),
-  'Library/Application Support/Code/User/globalStorage/github.copilot-chat/session-store.db',
-);
+const DB = findSessionStoreDb();
 
 // Model cost multipliers, per GitHub's ET model.
 const MULTIPLIERS = { haiku: 0.25, sonnet: 1.0, opus: 5.0 };
@@ -117,52 +115,69 @@ const fmt = (n) =>
       : String(Math.round(n));
 
 /**
- * Model a session's token flow turn by turn.
+ * Model a session's token flow turn by turn, across its FULL history, but only
+ * tally cost for turns flagged `in_window` (row.in_window === 1).
  *
  * Turn 1 pays the fixed overhead as fresh input. Every later turn re-sends the whole
  * conversation so far, which is served from cache at 0.1× — this is what makes long
- * sessions expensive even when each individual message is small.
+ * sessions expensive even when each individual message is small. Simulating from
+ * turn 1 (not from the first turn inside the window) keeps that cache cost honest
+ * for sessions that started before the reporting window.
  */
 function scoreSession(turns, baseTokens, multiplier) {
   let fresh = 0;
   let cached = 0;
   let output = 0;
+  let windowTurns = 0;
   let running = baseTokens;
 
   turns.forEach((turn, index) => {
     const inTok = tokens(turn.in_chars);
     const outTok = tokens(turn.out_chars);
+    const inWindow = turn.in_window === 1;
 
-    if (index === 0) fresh += baseTokens;
-    else cached += running;
+    if (inWindow) {
+      if (index === 0) fresh += baseTokens;
+      else cached += running;
+      fresh += inTok;
+      output += outTok;
+      windowTurns += 1;
+    }
 
-    fresh += inTok;
-    output += outTok;
     running += inTok + outTok;
   });
 
   const et = multiplier * (fresh + 0.1 * cached + 4 * output);
-  return { fresh, cached, output, et, turns: turns.length };
+  return { fresh, cached, output, et, turns: windowTurns };
 }
 
 function main() {
   const opts = parseArgs(process.argv.slice(2));
-  if (!existsSync(DB)) {
+  if (!DB) {
+    const candidates = resolveSessionStoreDbPaths();
     die(
-      `Session store not found at:\n   ${DB}\n\nEnable "github.copilot.chat.localIndex.enabled" in VS Code settings, then use Copilot for a while.`,
+      `Session store not found. Checked:\n${candidates.map((p) => `   ${p}`).join('\n') || '   (no VS Code User directory found)'}\n\nEnable "github.copilot.chat.localIndex.enabled" in VS Code settings, then use Copilot for a while.`,
     );
   }
 
   const multiplier = MULTIPLIERS[opts.model];
 
+  // Two-pass: find sessions with any turn in the window, then pull each
+  // session's FULL turn history so cache-cost simulation starts from turn 1 —
+  // otherwise a mid-session turn looks like a cheap "first turn".
   const rows = query(`
     SELECT s.id, COALESCE(NULLIF(s.repository,''),'(no repo)') AS repo,
            s.updated_at,
            t.turn_index,
            LENGTH(COALESCE(t.user_message,''))      AS in_chars,
-           LENGTH(COALESCE(t.assistant_response,'')) AS out_chars
+           LENGTH(COALESCE(t.assistant_response,'')) AS out_chars,
+           CASE WHEN t.timestamp >= datetime('now', '-${opts.days} day')
+                THEN 1 ELSE 0 END AS in_window
     FROM sessions s JOIN turns t ON t.session_id = s.id
-    WHERE s.updated_at >= datetime('now', '-${opts.days} day')
+    WHERE s.id IN (
+      SELECT DISTINCT session_id FROM turns
+      WHERE timestamp >= datetime('now', '-${opts.days} day')
+    )
     ORDER BY s.id, t.turn_index
   `);
 

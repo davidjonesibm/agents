@@ -60,9 +60,9 @@ Want the narrow version, or the full pass?
 
 If the user says "just do it" or "stop asking", drop the gate for the rest of the session.
 
-**Never** ingest a whole codebase to orient yourself. Check for `docs/codebase-graph.md`,
-`graphify-out/`, `AGENTS.md`, or `.github/copilot-instructions.md` first — that is what they
-are for. If none exist, ask which 2–3 files are the entry points.
+**Never** ingest a whole codebase to orient yourself. Check for a pre-computed graph artifact
+(e.g. `graphify-out/`), `AGENTS.md`, or `.github/copilot-instructions.md` first — that is what
+they are for. If none exist, ask which 2–3 files are the entry points.
 
 ## 3. Do not pad output
 

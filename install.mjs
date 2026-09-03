@@ -58,6 +58,8 @@ import {
 } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { resolveVsCodeUserDirs } from './lib/vscode-paths.mjs';
+import { updateRugAgentRoster } from './lib/rug-roster.mjs';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -381,31 +383,6 @@ function discoverInstructions(sourceRoot) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/**
- * Locate every VS Code User directory on this machine.
- *
- * Instructions live in <User>/prompts, which is outside ~/.copilot and differs per
- * platform and per VS Code flavour. All detected flavours get the files so behaviour
- * is consistent whichever build you launch.
- */
-function resolveVsCodeUserDirs() {
-  if (process.env.VSCODE_USER_DIR) return [process.env.VSCODE_USER_DIR];
-
-  const home = homedir();
-  let base;
-  if (process.platform === 'darwin') {
-    base = join(home, 'Library', 'Application Support');
-  } else if (process.platform === 'win32') {
-    base = process.env.APPDATA || join(home, 'AppData', 'Roaming');
-  } else {
-    base = process.env.XDG_CONFIG_HOME || join(home, '.config');
-  }
-
-  return ['Code', 'Code - Insiders', 'VSCodium']
-    .map((flavour) => join(base, flavour, 'User'))
-    .filter((dir) => existsSync(dir));
-}
-
 // ---------------------------------------------------------------------------
 // Manifest
 // ---------------------------------------------------------------------------
@@ -495,6 +472,9 @@ function installTarget({ target, agents, skills, opts }) {
         }
       }
     }
+
+    // Keep RUG's roster in sync with whatever agents actually landed here
+    if (!opts.dryRun) updateRugAgentRoster(agentDir);
   } else {
     nextManifest.agents = prevManifest.agents;
   }
@@ -747,7 +727,9 @@ function main() {
     if (opts.skills) printSection('Skills', result.skills);
   }
 
-  if (opts.instructions && instructions.length) {
+  if (opts.instructions) {
+    // Always run, even with an empty source list — this is what lets a removed
+    // instruction get pruned from every machine instead of lingering forever.
     const userDirs = resolveVsCodeUserDirs();
     if (userDirs.length === 0) {
       console.log(
