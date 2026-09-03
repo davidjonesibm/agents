@@ -65,20 +65,22 @@ Local routing is primarily useful for:
 Overrides the RUG orchestrator's default cost gate. RUG stops and asks for confirmation when a
 threshold trips. Raise these if the gate interrupts you too often; lower them to be more frugal.
 
-| Key                       | Default | Meaning                                                            |
-| ------------------------- | ------- | ------------------------------------------------------------------ |
-| `maxFilesPerDispatch`     | 15      | Files a single subagent may read before RUG asks                   |
-| `maxDispatchesPerSession` | 12      | Subagent launches before RUG checks in on spend                    |
-| `maxFilesTouched`         | 8       | Files one task may modify before RUG asks                          |
-| `requireApprovalForT1`    | true    | Ask before any Opus-tier escalation                                |
-| `repairAttempts`          | 2       | Failed attempts before RUG stops and reports (never raise above 3) |
-| `gate`                    | on      | Set to `off` to disable the cost gate entirely                     |
+| Key                    | Default | Meaning                                                            |
+| ---------------------- | ------- | ------------------------------------------------------------------ |
+| `maxFilesPerDispatch`  | 15      | Files a single subagent may read before RUG asks                   |
+| `maxFilesTouched`      | 8       | Files one task may modify before RUG asks                          |
+| `requireApprovalForT1` | true    | Ask before any Opus-tier escalation                                |
+| `repairAttempts`       | 2       | Failed attempts before RUG stops and reports (never raise above 3) |
+| `gate`                 | on      | Set to `off` to disable the cost gate entirely                     |
+
+> There is deliberately **no** cap on subagent count. Dispatch count is not a cost — capping it
+> pushes the orchestrator into doing the work itself, which is the most expensive outcome and
+> produces the worst results.
 
 **Active policy for this repo** — edit the values below; RUG honors them verbatim:
 
 ```yaml
 maxFilesPerDispatch: 15
-maxDispatchesPerSession: 12
 maxFilesTouched: 8
 requireApprovalForT1: true
 repairAttempts: 2

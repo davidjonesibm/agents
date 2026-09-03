@@ -18,6 +18,12 @@
         "description": "Three-phase pipeline (ingest/plan/execute) for producing T3-ready execution plans that maximize cheap-model dispatch"
       },
       {
+        "name": "root-cause-analysis",
+        "type": "bundled",
+        "location": "skills/root-cause-analysis",
+        "description": "Injected into diagnosis dispatches \u2014 RUG passes the path, the subagent runs it"
+      },
+      {
         "name": "local-routing",
         "type": "scaffold",
         "location": ".github/skills/local-routing",
@@ -32,6 +38,12 @@
         "type": "bundled",
         "location": "skills/work-planning",
         "description": "Loaded dynamically when SE is asked to produce plans (not implement)"
+      },
+      {
+        "name": "root-cause-analysis",
+        "type": "bundled",
+        "location": "skills/root-cause-analysis",
+        "description": "Loaded whenever the input is a symptom rather than a spec \u2014 hypothesis discipline, environment-before-source, staleness checks, honest gates"
       }
     ]
   },
